@@ -18,6 +18,9 @@ public class Curso {
 
     private String nome;
 
+    @Column(name = "imagem_principal_url")
+    private String imagemPrincipalUrl;
+
     @Column(name = "descricao_resumida")
     private String descricaoResumida;
 

@@ -244,22 +244,6 @@ CREATE TABLE `usuarios_termos` (
 SET FOREIGN_KEY_CHECKS=1;
 
 -- -----------------------------------------------------
--- 3. DADOS DE TESTE (MOCKS PARA O MVP)
+-- 3. ALTERAÇÕES NO BD
 -- -----------------------------------------------------
-
-INSERT INTO `termos_uso` (`id`, `versao`, `conteudo`, `data_publicacao`) VALUES 
-('uuid-termo-1', '1.0', 'It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters. Ao clicar em aceitar, você concorda com nossos termos.', NOW());
-
-INSERT INTO `parceiros` (`id`, `nome`, `plano`, `ativo`) VALUES 
-('uuid-parceiro-1', 'Cursinho Aprovação Max', 'Premium', 1);
-
-INSERT INTO `anuncios` (`id`, `parceiro_id`, `titulo`, `data_inicio`, `ativo`) VALUES 
-('uuid-anuncio-1', 'uuid-parceiro-1', 'Propaganda do cursinho', NOW(), 1);
-
-INSERT INTO `instituicoes` (`id`, `nome`, `sigla`, `cidade`, `estado`, `ativa`) VALUES 
-('uuid-inst-1', 'Universidade de Tecnologia de São Paulo', 'UTSP', 'São Paulo', 'SP', 1),
-('uuid-inst-2', 'Instituto Federal de Minas', 'IFM', 'Belo Horizonte', 'MG', 1);
-
-INSERT INTO `cursos` (`id`, `instituicao_id`, `nome`, `descricao_resumida`, `ativo`) VALUES 
-('uuid-curso-1', 'uuid-inst-1', 'Engenharia de Software', 'is simply dummy text of the printing and typesetting industry.', 1),
-('uuid-curso-2', 'uuid-inst-2', 'Ciência da Computação', 'It is a long established fact that a reader will be distracted by the readable content.', 1);
+ALTER TABLE `cursos` ADD COLUMN imagem_principal_url varchar(500) DEFAULT NULL AFTER `nome`;
