@@ -1,0 +1,588 @@
+{
+  "info": {
+    "name": "SAUF API",
+    "description": "Rotas da sauf-api v1. Selecione o environment 'SAUF local' e preencha apiKey.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Catálogo",
+      "item": [
+        {
+          "name": "Áreas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Áreas do Censo (Cine) com o total de cursos.",
+            "url": {
+              "raw": "{{baseUrl}}/areas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "areas"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "Cursos (catálogo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const corpo = pm.response.json();",
+                  "const primeiro = corpo.content[0];",
+                  "if (primeiro) {",
+                  "    pm.collectionVariables.set(\"cursoId\", primeiro.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Catálogo de cursos genéricos. Salva o id do primeiro em {{cursoId}}.",
+            "url": {
+              "raw": "{{baseUrl}}/cursos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos"
+              ],
+              "query": [
+                {
+                  "key": "busca",
+                  "value": "engenharia",
+                  "description": "Texto no nome do curso.",
+                  "disabled": true
+                },
+                {
+                  "key": "area",
+                  "value": "",
+                  "description": "UUID da área (pegue em /areas).",
+                  "disabled": true
+                },
+                {
+                  "key": "modalidade",
+                  "value": "presencial",
+                  "description": "presencial | semipresencial | ead",
+                  "disabled": true
+                },
+                {
+                  "key": "grau",
+                  "value": "bacharelado",
+                  "description": "bacharelado | licenciatura | tecnologo | bacharelado_e_licenciatura",
+                  "disabled": true
+                },
+                {
+                  "key": "duracaoSemestres",
+                  "value": "10",
+                  "description": "Duração exata em semestres.",
+                  "disabled": true
+                },
+                {
+                  "key": "uf",
+                  "value": "PR",
+                  "description": "UF da oferta.",
+                  "disabled": true
+                },
+                {
+                  "key": "cidade",
+                  "value": "Maringá",
+                  "description": "Cidade da oferta.",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Página, começando em 0.",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "12",
+                  "description": "Itens por página (padrão 12).",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc",
+                  "description": "Ordenação campo,direção (padrão nome,asc).",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Curso (detalhe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Rode antes 'Cursos (catálogo)' para preencher {{cursoId}}.",
+            "url": {
+              "raw": "{{baseUrl}}/cursos/{{cursoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos",
+                "{{cursoId}}"
+              ],
+              "query": [
+                {
+                  "key": "uf",
+                  "value": "PR",
+                  "description": "Considera só as ofertas desta UF nos números.",
+                  "disabled": true
+                },
+                {
+                  "key": "cidade",
+                  "value": "Maringá",
+                  "description": "Considera só as ofertas desta cidade nos números.",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ofertas do curso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Ofertas (curso em cada universidade), com sobre e mercadoTrabalho.",
+            "url": {
+              "raw": "{{baseUrl}}/cursos/{{cursoId}}/ofertas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos",
+                "{{cursoId}}",
+                "ofertas"
+              ],
+              "query": [
+                {
+                  "key": "modalidade",
+                  "value": "presencial",
+                  "description": "presencial | semipresencial | ead",
+                  "disabled": true
+                },
+                {
+                  "key": "grau",
+                  "value": "bacharelado",
+                  "description": "bacharelado | licenciatura | tecnologo | bacharelado_e_licenciatura",
+                  "disabled": true
+                },
+                {
+                  "key": "uf",
+                  "value": "PR",
+                  "description": "UF da oferta.",
+                  "disabled": true
+                },
+                {
+                  "key": "cidade",
+                  "value": "Maringá",
+                  "description": "Cidade da oferta.",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Página, começando em 0.",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "Itens por página (padrão 20).",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "nomeNoSite,asc",
+                  "description": "Ordenação campo,direção (padrão nomeNoSite,asc).",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Universidades",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const corpo = pm.response.json();",
+                  "const primeiro = corpo.content[0];",
+                  "if (primeiro) {",
+                  "    pm.collectionVariables.set(\"universidadeId\", primeiro.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Salva o id da primeira em {{universidadeId}}.",
+            "url": {
+              "raw": "{{baseUrl}}/universidades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "universidades"
+              ],
+              "query": [
+                {
+                  "key": "busca",
+                  "value": "maringá",
+                  "description": "Texto no nome ou sigla.",
+                  "disabled": true
+                },
+                {
+                  "key": "uf",
+                  "value": "PR",
+                  "description": "UF da instituição.",
+                  "disabled": true
+                },
+                {
+                  "key": "cidade",
+                  "value": "Maringá",
+                  "description": "Cidade da instituição.",
+                  "disabled": true
+                },
+                {
+                  "key": "tipo",
+                  "value": "publica",
+                  "description": "publica | privada",
+                  "disabled": true
+                },
+                {
+                  "key": "modalidade",
+                  "value": "presencial",
+                  "description": "presencial | semipresencial | ead",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Página, começando em 0.",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "12",
+                  "description": "Itens por página (padrão 12).",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc",
+                  "description": "Ordenação campo,direção (padrão nome,asc).",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Universidade (detalhe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Rode antes 'Universidades' para preencher {{universidadeId}}.",
+            "url": {
+              "raw": "{{baseUrl}}/universidades/{{universidadeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "universidades",
+                "{{universidadeId}}"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "Ofertas da universidade",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/universidades/{{universidadeId}}/ofertas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "universidades",
+                "{{universidadeId}}",
+                "ofertas"
+              ],
+              "query": [
+                {
+                  "key": "area",
+                  "value": "",
+                  "description": "UUID da área (pegue em /areas).",
+                  "disabled": true
+                },
+                {
+                  "key": "modalidade",
+                  "value": "presencial",
+                  "description": "presencial | semipresencial | ead",
+                  "disabled": true
+                },
+                {
+                  "key": "grau",
+                  "value": "bacharelado",
+                  "description": "bacharelado | licenciatura | tecnologo | bacharelado_e_licenciatura",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Página, começando em 0.",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "Itens por página (padrão 20).",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "nomeNoSite,asc",
+                  "description": "Ordenação campo,direção (padrão nomeNoSite,asc).",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ingestão",
+      "item": [
+        {
+          "name": "Censo (exemplo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "description": "ATENÇÃO: grava no banco configurado na API (o Supabase). Usa uma instituição fictícia (e-MEC 999999) para não sobrescrever a UEM, mas ela aparece nas listagens. Prefira popular com o sauf-scraper e use este exemplo só para testar validação.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"anoCenso\": 2024,\n  \"instituicoes\": [\n    {\n      \"codigoEmec\": 999999,\n      \"nome\": \"Instituição de Teste Postman\",\n      \"sigla\": \"ITP\",\n      \"tipo\": \"publica\",\n      \"categoriaAdministrativa\": \"Pública Estadual\",\n      \"organizacaoAcademica\": \"Universidade\",\n      \"uf\": \"PR\",\n      \"cidade\": \"Maringá\"\n    }\n  ],\n  \"ofertas\": [\n    {\n      \"codigoEmec\": 9999901,\n      \"codigoEmecInstituicao\": 999999,\n      \"nome\": \"Engenharia de Software\",\n      \"grau\": \"bacharelado\",\n      \"modalidade\": \"presencial\",\n      \"cidade\": \"Maringá\",\n      \"uf\": \"PR\",\n      \"vagas\": 40,\n      \"gratuito\": true,\n      \"codigoCineRotulo\": \"0613E01\",\n      \"nomeCineRotulo\": \"Engenharia de software\",\n      \"codigoCineArea\": \"06\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingestao/censo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingestao",
+                "censo"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lote do scraper (exemplo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "description": "ATENÇÃO: grava no banco configurado na API (o Supabase). Usa uma instituição fictícia (e-MEC 999999) para não sobrescrever a UEM, mas ela aparece nas listagens. Prefira popular com o sauf-scraper e use este exemplo só para testar validação. Rode 'Censo (exemplo)' antes, senão a API devolve 422.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"execucaoId\": \"postman-teste\",\n  \"fonte\": {\n    \"url\": \"https://www.exemplo.br/cursos\",\n    \"coletadoEm\": \"2026-10-09T18:00:00Z\",\n    \"versaoScraper\": \"postman\"\n  },\n  \"codigoEmecInstituicao\": 999999,\n  \"cursos\": [\n    {\n      \"chave\": \"itp:engenharia-de-software:maringa:noturno\",\n      \"codigosEmec\": [\n        9999901\n      ],\n      \"urlOrigem\": \"https://www.exemplo.br/cursos/engenharia-de-software\",\n      \"nome\": \"Engenharia de Software\",\n      \"opcoes\": [\n        {\n          \"grau\": \"bacharelado\",\n          \"turno\": \"Noturno\"\n        }\n      ],\n      \"modalidade\": \"presencial\",\n      \"turno\": \"Noturno\",\n      \"sobre\": \"Texto de exemplo do curso.\\nSegunda linha.\\n\\nSegundo parágrafo.\",\n      \"mercadoTrabalho\": \"Texto de exemplo do mercado de trabalho.\",\n      \"duracaoTexto\": \"5 anos\",\n      \"duracaoSemestres\": 10,\n      \"cidade\": \"Maringá\",\n      \"uf\": \"PR\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingestao/lotes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingestao",
+                "lotes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Erro: lote sem X-Api-Key (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Sem o header X-Api-Key a API recusa com 401, antes de gravar qualquer coisa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"execucaoId\": \"postman-teste\",\n  \"fonte\": {\n    \"url\": \"https://www.exemplo.br/cursos\",\n    \"coletadoEm\": \"2026-10-09T18:00:00Z\",\n    \"versaoScraper\": \"postman\"\n  },\n  \"codigoEmecInstituicao\": 999999,\n  \"cursos\": [\n    {\n      \"chave\": \"itp:engenharia-de-software:maringa:noturno\",\n      \"codigosEmec\": [\n        9999901\n      ],\n      \"urlOrigem\": \"https://www.exemplo.br/cursos/engenharia-de-software\",\n      \"nome\": \"Engenharia de Software\",\n      \"opcoes\": [\n        {\n          \"grau\": \"bacharelado\",\n          \"turno\": \"Noturno\"\n        }\n      ],\n      \"modalidade\": \"presencial\",\n      \"turno\": \"Noturno\",\n      \"sobre\": \"Texto de exemplo do curso.\\nSegunda linha.\\n\\nSegundo parágrafo.\",\n      \"mercadoTrabalho\": \"Texto de exemplo do mercado de trabalho.\",\n      \"duracaoTexto\": \"5 anos\",\n      \"duracaoSemestres\": 10,\n      \"cidade\": \"Maringá\",\n      \"uf\": \"PR\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingestao/lotes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingestao",
+                "lotes"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "cursoId",
+      "value": ""
+    },
+    {
+      "key": "universidadeId",
+      "value": ""
+    }
+  ]
+}
