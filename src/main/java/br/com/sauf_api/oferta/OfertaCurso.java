@@ -86,9 +86,6 @@ public class OfertaCurso {
     @Column(name = "url_origem")
     private String urlOrigem;
 
-    @Column(name = "nota_corte_sisu", precision = 6, scale = 2)
-    private BigDecimal notaCorteSisu;
-
     @Column(precision = 10, scale = 2)
     private BigDecimal mensalidade;
 
@@ -240,14 +237,6 @@ public class OfertaCurso {
 
     public void setUrlOrigem(String urlOrigem) {
         this.urlOrigem = urlOrigem;
-    }
-
-    public BigDecimal getNotaCorteSisu() {
-        return notaCorteSisu;
-    }
-
-    public void setNotaCorteSisu(BigDecimal notaCorteSisu) {
-        this.notaCorteSisu = notaCorteSisu;
     }
 
     public BigDecimal getMensalidade() {

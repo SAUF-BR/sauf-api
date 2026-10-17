@@ -7,6 +7,7 @@ import br.com.sauf_api.oferta.FiltroOfertas;
 import br.com.sauf_api.oferta.OfertaCursoRepository;
 import br.com.sauf_api.oferta.OfertaEspecificacoes;
 import br.com.sauf_api.oferta.OfertaResposta;
+import br.com.sauf_api.sisu.NotasSisu;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -22,12 +23,17 @@ public class UniversidadeService {
     private final InstituicaoRepository instituicoes;
     private final OfertaCursoRepository ofertas;
     private final EstatisticasOfertas estatisticas;
+    private final NotasSisu sisu;
 
     public UniversidadeService(
-            InstituicaoRepository instituicoes, OfertaCursoRepository ofertas, EstatisticasOfertas estatisticas) {
+            InstituicaoRepository instituicoes,
+            OfertaCursoRepository ofertas,
+            EstatisticasOfertas estatisticas,
+            NotasSisu sisu) {
         this.instituicoes = instituicoes;
         this.ofertas = ofertas;
         this.estatisticas = estatisticas;
+        this.sisu = sisu;
     }
 
     public Pagina<UniversidadeResumo> listar(FiltroUniversidades filtro, Pageable pageable) {
@@ -64,7 +70,7 @@ public class UniversidadeService {
     public Pagina<OfertaResposta> ofertas(UUID id, FiltroOfertas filtro, UUID areaId, Pageable pageable) {
         buscar(id);
         var pagina = ofertas.findAll(OfertaEspecificacoes.daInstituicao(id, filtro, areaId), pageable);
-        return Pagina.de(pagina, OfertaResposta::de);
+        return OfertaResposta.pagina(pagina, sisu);
     }
 
     private Instituicao buscar(UUID id) {

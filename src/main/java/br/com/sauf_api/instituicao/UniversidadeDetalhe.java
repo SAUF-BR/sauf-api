@@ -19,7 +19,7 @@ public record UniversidadeDetalhe(
         String uf,
         String siteUrl,
         @Schema(description = "Ainda sem fonte de dados; vem null (P-11)") String logoUrl,
-        @Schema(description = "Ainda sem fonte de dados; vem null (P-11)") Integer notaMec,
+        @Schema(description = "IGC faixa (1 a 5) do ano mais recente importado; null quando sem conceito (SC) ou sem IGC (D-49)") Integer notaMec,
         long totalCursos,
         Set<Modalidade> modalidades,
         List<AreaCursos> cursosPorArea,

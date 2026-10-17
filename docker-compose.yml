@@ -1,0 +1,24 @@
+# Postgres local para desenvolvimento da sauf-api.
+# Usuário e senha "sauf" são SÓ para dev local: não use em nenhum banco compartilhado.
+# Porta 5433 no host para não conflitar com um Postgres instalado no Windows (5432).
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sauf-postgres
+    environment:
+      POSTGRES_DB: sauf
+      POSTGRES_USER: sauf
+      POSTGRES_PASSWORD: sauf
+    ports:
+      - "5433:5432"
+    volumes:
+      - sauf-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sauf -d sauf"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  sauf-pgdata:

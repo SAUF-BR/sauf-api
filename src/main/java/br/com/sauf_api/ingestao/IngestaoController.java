@@ -11,9 +11,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class IngestaoController {
 
     private final IngestaoService service;
+    private final IngestaoIgcService igc;
+    private final IngestaoSisuService sisu;
 
-    public IngestaoController(IngestaoService service) {
+    public IngestaoController(IngestaoService service, IngestaoIgcService igc, IngestaoSisuService sisu) {
         this.service = service;
+        this.igc = igc;
+        this.sisu = sisu;
     }
 
     @PostMapping("/censo")
@@ -24,5 +28,15 @@ public class IngestaoController {
     @PostMapping("/lotes")
     public RespostaIngestao lote(@Valid @RequestBody LoteScraperRequest lote) {
         return service.importarLote(lote);
+    }
+
+    @PostMapping("/igc")
+    public RespostaIngestao igc(@Valid @RequestBody LoteIgcRequest lote) {
+        return igc.importar(lote);
+    }
+
+    @PostMapping("/sisu")
+    public RespostaSisu sisu(@Valid @RequestBody LoteSisuRequest lote) {
+        return sisu.importar(lote);
     }
 }

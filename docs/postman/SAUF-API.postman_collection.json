@@ -530,6 +530,100 @@
           }
         },
         {
+          "name": "IGC / nota MEC (exemplo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "description": "ATENÇÃO: grava no banco configurado na API (o Supabase). Usa uma instituição fictícia (e-MEC 999999) para não sobrescrever a UEM, mas ela aparece nas listagens. Prefira popular com o sauf-scraper e use este exemplo só para testar validação. Rode 'Censo (exemplo)' antes, senão a API devolve 422. igcFaixa null = 'SC' (sem conceito). Dados reais: uv run sauf-scraper igc --arquivo ...",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ano\": 2023,\n  \"instituicoes\": [\n    {\n      \"codigoEmec\": 999999,\n      \"igcContinuo\": 3.5,\n      \"igcFaixa\": 4\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingestao/igc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingestao",
+                "igc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sisu / notas de corte (exemplo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "description": "ATENÇÃO: grava no banco configurado na API (o Supabase). Usa uma instituição fictícia (e-MEC 999999) para não sobrescrever a UEM, mas ela aparece nas listagens. Prefira popular com o sauf-scraper e use este exemplo só para testar validação. Rode 'Censo (exemplo)' e 'Lote do scraper (exemplo)' antes. Só ampla concorrência; nota null = sem nota de corte. Dados reais: uv run sauf-scraper sisu --arquivo ...",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ano\": 2025,\n  \"linhas\": [\n    {\n      \"codigoEmecInstituicao\": 999999,\n      \"codigoEmecCurso\": 9999901,\n      \"turno\": \"Noturno\",\n      \"vagas\": 10,\n      \"nota\": 701.5,\n      \"inscricoes\": 120\n    },\n    {\n      \"codigoEmecInstituicao\": 999999,\n      \"codigoEmecCurso\": 9999901,\n      \"turno\": \"Integral\",\n      \"vagas\": 5,\n      \"nota\": null,\n      \"inscricoes\": 8\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingestao/sisu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingestao",
+                "sisu"
+              ]
+            }
+          }
+        },
+        {
           "name": "Erro: lote sem X-Api-Key (401)",
           "event": [
             {
