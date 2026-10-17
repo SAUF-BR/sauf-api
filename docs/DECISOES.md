@@ -118,6 +118,20 @@ Vêm da comparação entre as telas do protótipo e os dados que temos (`05-prot
 | D-44 | **Cursos parecidos pela hierarquia Cine + nota de corte, sem "%"** (P-36, opção a). | Critério explicável; o "% parecido" do protótipo não tem base nos dados. |
 | D-45 | **Nota de corte do SISU só de ampla concorrência** (P-37, opção a). | Um número por oferta e ano, comparável entre universidades. |
 | D-46 | **Texto "Mercado de Trabalho" em campo próprio** (`oferta_curso.mercado_trabalho`, `mercadoTrabalho` na API), separado do `sobre` (09/10/2026, opção A). Mesmo formato e regras do `sobre` (D-37): texto puro, só o site preenche, o Censo não mexe, o lote seguinte sobrescreve; `null` quando a página não tem a seção, e o front esconde o bloco. Alimenta "Onde você pode trabalhar" (D-41). Coluna criada na migração `V2__mercado_trabalho.sql`. | O front lê cada bloco direto, sem recortar texto nem depender de marcador. |
+| D-47 | **"Campo de atuação" também conta como "Mercado de Trabalho"** (09/10/2026, decisão do Carlos). O scraper reconhece os dois títulos em negrito ou como linha exata de texto (com ou sem ":", maiúsculas ou minúsculas, com ou sem acento); frases comuns como "O campo de atuação do biomédico é…" não são cortadas. Se a página tiver as duas seções, elas vão juntas no `mercadoTrabalho`, separadas por `
+
+### Scrapers gerais e notas (16/10/2026)
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-48 | **Importadores gerais leem um arquivo local baixado à mão** (`sauf-scraper <fonte> --arquivo ...`). São filtrados para as IES do escopo (as que têm spider, P-35 c / D-43) e casados pelo **código e-MEC**, com relatório no log das IES do escopo que não casaram. `--dry-run` grava `output/<fonte>-<ano>.json`; sem ele, envia para a API. | O gov.br bloqueia robôs; a planilha oficial baixada à mão é estável e auditável. |
+| D-49 | **"Nota MEC" = IGC faixa (1 a 5) da IES**, guardado por ano na tabela `indicador_ies` (com o IGC contínuo), sem apagar anos anteriores. A API mostra em `notaMec` a faixa do **ano mais recente** importado (copiada para `instituicao.nota_mec` na ingestão). `'SC'` (sem conceito) vira `null`. Rota: `POST /api/v1/ingestao/igc`. | O IGC é o indicador oficial da instituição; guardar por ano permite histórico. |
+| D-50 | **Notas de corte (fase B):** fonte Sisu (gov.br/mec/pt-br/sisu/documentos → "Inscrições e notas de corte"; a edição mais recente publicada é a Sisu 2025). Só **ampla concorrência** (`TP_MOD_CONCORRENCIA` 'A' / `TIPO_CONCORRENCIA` 'AC', D-45). `NU_NOTACORTE` 0 vira `null`. A nota é guardada por (código e-MEC, turno, ano). O card de cada oferta mostra o **menor** corte, com o turno. A "Média do corte SISU <ano>" do curso genérico é a **média simples** de todas as ofertas com nota, calculada no **backend**. Ofertas sem Sisu mostram "Ingresso por vestibular próprio". O rótulo usa o ano do dado, nunca um ano fixo. | Uma regra só para todas as telas, sem cálculo no front. |
+| D-51 | **G4 (PROUni/FIES) e G5 (e-MEC) saem do plano.** As 5 IES são públicas. O endereço vem do arquivo de IES do Censo (`DS_ENDERECO_IES` etc., fase C). Ano de fundação, formas de ingresso, logo, foto e "sobre" da IES vão para `dados/ies/<sigla>.yaml` (fase D). "Sua chance estimada" fica fora do MVP; a distância "a X km" sai do protótipo; disciplinas = só o link do `urlOrigem`. | Corta fontes que não agregam às 5 IES públicas da apresentação. |
+| D-52 | **Migrations com data e hora no nome** (17/10/2026): `V<AAAA>_<MM>_<DD>_<HHMM>__descricao.sql` (o Flyway lê `_` como separador: vira a versão `AAAA.MM.DD.HHMM`). V1, V2 e V3 ficam como estão. Não usamos `outOfOrder`. Cada um testa no Postgres local (Docker); o Supabase recebe só o que está na `main`. Erros comuns e o que fazer: README, seção "Migrations". | Branches paralelas criavam o mesmo número (V4, V4...). |
+| D-53 | **Campos de nota de corte na API** (17/10/2026, complementa a D-50). Oferta: `notaCorteSisu` (menor corte entre os códigos e-MEC e turnos da oferta) + `notaCorteSisuTurno` + `notaCorteSisuAno`. Curso genérico: `notaCorteSisuMin` foi **trocado** por `notaCorteSisuMedia` (média simples, cada par (código e-MEC, turno) uma vez, arredondada em 2 casas) + `notaCorteSisuAno`. Sempre o ano mais recente que tem nota; `null` = sem Sisu (o front mostra "Ingresso por vestibular próprio"). As notas ficam na tabela `nota_corte_sisu` (rota `POST /api/v1/ingestao/sisu`, que devolve também `semOferta`); a coluna antiga `oferta_curso.nota_corte_sisu` ficou sem uso e pode sair numa migration futura. | Regras da D-50 aplicadas no backend. |
+
+`, na ordem da página. "Perfil do egresso" e "Atribuições" continuam no `sobre`. | Várias páginas da UEM usam "Campo de atuação" no lugar de "Mercado de Trabalho" para o mesmo conteúdo. |
 
 ---
 
@@ -234,7 +248,7 @@ aberta e pode mudar sem esforço grande.
 |---|---|---|
 | P-09 | **Login e autenticação**: Supabase Auth ou login próprio (Spring Security)? | Deixado para o final por decisão do Carlos. |
 | P-10 | **Contradição no front**: a ADR-005 decidiu token em cookie HttpOnly, mas o `client.ts` lê o token do `localStorage`. | Resolver junto com P-09. |
-| P-11 | **Fontes de dados ainda inexistentes**: nota de corte SISU, mensalidade, nota MEC, imagens dos cursos, logos das universidades. | Na v1 vêm `null` (D-21). |
+| P-11 | **Fontes de dados ainda inexistentes**: mensalidade, imagens dos cursos, logos das universidades. Nota MEC resolvida pela D-49 e notas de corte pela D-50/D-53. | Na v1 vêm `null` (D-21). |
 | P-12 | **Formas de ingresso e próximos prazos/editais** por universidade. | `FormaIngresso` não tem relação no DER. |
 | ~~P-13~~ | **"Na sua região"**: localização do usuário ou filtro de UF/cidade? | Resolvido: D-42 (UF do perfil). |
 | P-14 | **Assinaturas e simulados**: planos, gateway de pagamento, conteúdo dos simulados. | Ainda em definição pelo time. |

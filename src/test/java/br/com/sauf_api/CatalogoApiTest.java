@@ -18,6 +18,8 @@ import br.com.sauf_api.oferta.Modalidade;
 import br.com.sauf_api.oferta.OfertaCurso;
 import br.com.sauf_api.oferta.OfertaCursoRepository;
 import br.com.sauf_api.oferta.Opcao;
+import br.com.sauf_api.sisu.NotaCorteSisu;
+import br.com.sauf_api.sisu.NotaCorteSisuRepository;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +42,7 @@ class CatalogoApiTest {
     @Autowired InstituicaoRepository instituicoes;
     @Autowired CursoRepository cursos;
     @Autowired OfertaCursoRepository ofertas;
+    @Autowired NotaCorteSisuRepository notasSisu;
 
     Instituicao uem;
     Instituicao uel;
@@ -57,10 +60,10 @@ class CatalogoApiTest {
         biomedicina = cursos.save(new Curso("Biomedicina", saude));
         engenhariaSoftware = cursos.save(new Curso("Engenharia de Software", computacao));
 
-        oferta(biomedicina, uem, "uem:biomedicina:maringa:integral", Modalidade.PRESENCIAL, 8, "712.40");
-        oferta(biomedicina, uel, "uel:biomedicina:londrina:integral", Modalidade.PRESENCIAL, 10, "698.10");
-        oferta(engenhariaSoftware, uem, "uem:engenharia-de-software:maringa:noturno", Modalidade.PRESENCIAL, 10, null);
-        oferta(engenhariaSoftware, uel, "uel:engenharia-de-software:londrina:ead", Modalidade.EAD, 8, null);
+        oferta(biomedicina, uem, "uem:biomedicina:maringa:integral", Modalidade.PRESENCIAL, 8, 1001, "712.40");
+        oferta(biomedicina, uel, "uel:biomedicina:londrina:integral", Modalidade.PRESENCIAL, 10, 1002, "698.10");
+        oferta(engenhariaSoftware, uem, "uem:engenharia-de-software:maringa:noturno", Modalidade.PRESENCIAL, 10, 1003, null);
+        oferta(engenhariaSoftware, uel, "uel:engenharia-de-software:londrina:ead", Modalidade.EAD, 8, 1004, null);
     }
 
     @Test
@@ -84,7 +87,9 @@ class CatalogoApiTest {
                 .andExpect(jsonPath("$.content[0].graus", containsInAnyOrder("bacharelado")))
                 .andExpect(jsonPath("$.content[0].duracaoSemestresMin").value(8))
                 .andExpect(jsonPath("$.content[0].duracaoSemestresMax").value(10))
-                .andExpect(jsonPath("$.content[0].notaCorteSisuMin").value(698.10))
+                .andExpect(jsonPath("$.content[0].notaCorteSisuMedia").value(705.25))
+                .andExpect(jsonPath("$.content[0].notaCorteSisuAno").value(2025))
+                .andExpect(jsonPath("$.content[1].notaCorteSisuMedia").doesNotExist())
                 .andExpect(jsonPath("$.content[1].modalidades", containsInAnyOrder("presencial", "ead")));
     }
 
@@ -186,7 +191,13 @@ class CatalogoApiTest {
     }
 
     private void oferta(
-            Curso curso, Instituicao instituicao, String chave, Modalidade modalidade, int semestres, String notaCorte) {
+            Curso curso,
+            Instituicao instituicao,
+            String chave,
+            Modalidade modalidade,
+            int semestres,
+            int codigoEmec,
+            String notaCorte) {
         OfertaCurso o = new OfertaCurso(curso, instituicao, chave, curso.getNome());
         o.setOpcoes(java.util.List.of(new Opcao(Grau.BACHARELADO, "Integral")));
         o.setModalidade(modalidade);
@@ -194,7 +205,12 @@ class CatalogoApiTest {
         o.setUf(instituicao.getUf());
         o.setCidade(instituicao.getCidade());
         o.setUrlOrigem("https://exemplo.br/" + chave.replace(':', '/'));
-        o.setNotaCorteSisu(notaCorte == null ? null : new BigDecimal(notaCorte));
+        o.setCodigosEmec(java.util.List.of(codigoEmec));
         ofertas.save(o);
+        if (notaCorte != null) {
+            NotaCorteSisu nota = new NotaCorteSisu(instituicao, codigoEmec, "Integral", 2025);
+            nota.atualizar(10, 100, new BigDecimal(notaCorte));
+            notasSisu.save(nota);
+        }
     }
 }

@@ -7,10 +7,10 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
-import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +32,7 @@ public class EstatisticasOfertas {
             Set<Modalidade> modalidades,
             Set<Grau> graus,
             Integer duracaoSemestresMin,
-            Integer duracaoSemestresMax,
-            BigDecimal notaCorteSisuMin) {}
+            Integer duracaoSemestresMax) {}
 
     public record PorInstituicao(long totalCursos, Set<Modalidade> modalidades) {}
 
@@ -46,13 +45,11 @@ public class EstatisticasOfertas {
         Root<OfertaCurso> oferta = q.from(OfertaCurso.class);
         Path<UUID> cursoId = oferta.get("curso").get("id");
         Path<Integer> duracao = oferta.get("duracaoSemestres");
-        Path<BigDecimal> nota = oferta.get("notaCorteSisu");
         q.multiselect(
                         cursoId,
                         cb.countDistinct(oferta.get("instituicao").get("id")),
                         cb.min(duracao),
-                        cb.max(duracao),
-                        cb.min(nota))
+                        cb.max(duracao))
                 .where(restricoes(cb, oferta, filtro, cursoId, cursoIds))
                 .groupBy(cursoId);
 
@@ -66,8 +63,26 @@ public class EstatisticasOfertas {
                     modalidades.getOrDefault(id, Set.of()),
                     graus.getOrDefault(id, Set.of()),
                     t.get(2, Integer.class),
-                    t.get(3, Integer.class),
-                    t.get(4, BigDecimal.class)));
+                    t.get(3, Integer.class)));
+        }
+        return resultado;
+    }
+
+    /** Códigos e-MEC das ofertas (que passam no filtro) de cada curso genérico. */
+    public Map<UUID, Set<Integer>> codigosEmecPorCurso(Collection<UUID> cursoIds, FiltroOfertas filtro) {
+        if (cursoIds.isEmpty()) {
+            return Map.of();
+        }
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Tuple> q = cb.createTupleQuery();
+        Root<OfertaCurso> oferta = q.from(OfertaCurso.class);
+        Path<UUID> cursoId = oferta.get("curso").get("id");
+        Path<Integer> codigo = oferta.join("codigosEmec");
+        q.multiselect(cursoId, codigo).distinct(true).where(restricoes(cb, oferta, filtro, cursoId, cursoIds));
+
+        Map<UUID, Set<Integer>> resultado = new HashMap<>();
+        for (Tuple t : em.createQuery(q).getResultList()) {
+            resultado.computeIfAbsent(t.get(0, UUID.class), k -> new HashSet<>()).add(t.get(1, Integer.class));
         }
         return resultado;
     }
