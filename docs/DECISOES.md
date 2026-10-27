@@ -133,6 +133,15 @@ Vêm da comparação entre as telas do protótipo e os dados que temos (`05-prot
 
 `, na ordem da página. "Perfil do egresso" e "Atribuições" continuam no `sobre`. | Várias páginas da UEM usam "Campo de atuação" no lugar de "Mercado de Trabalho" para o mesmo conteúdo. |
 
+### Assinaturas (21/10/2026)
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-54 | **Planos de assinatura definidos no código** (`enum Plano` em `assinatura/`), não no banco. Preço, texto, selo e recursos são alterados no código e publicados com a API. Não se renomeia nem apaga uma constante que já tenha assinaturas (o banco guarda o nome dela). | Alterar os planos com facilidade, numa fonte só, validada pelos testes. |
+| D-55 | **Login próprio na API** (resolve P-09): cadastro, login, logout e `GET /me` na própria API. O time define os dados do usuário e o que a API devolve. | Mais controle; coerente com a D-01 (Supabase só como banco). |
+| D-56 | **Usuário sem assinatura: `GET /api/v1/assinatura` responde `204 No Content`.** | Diferencia "não tem assinatura" de erro, sem inventar um corpo vazio. |
+| D-57 | **A assinatura renova (+1 mês) só com pagamento confirmado.** Sem confirmação, ela vence no `renovaEm` (o acesso vai até esse dia, inclusive) e passa a contar como sem assinatura. | Ninguém fica com acesso sem ter pago. |
+
 ---
 
 ## 3. Estrutura da v1 (implementada)
@@ -185,6 +194,11 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
 | `GET /api/v1/areas` | Áreas para os filtros, com contagem de cursos. |
 | `POST /api/v1/ingestao/censo` | Import do Censo (`sauf-scraper censo`). Cria/atualiza instituições pelo código e-MEC, cursos genéricos pelo rótulo Cine (D-31, D-36) e a tabela `censo_curso`. **Não cria ofertas** (D-33); depois do import, as ofertas do site já existentes são completadas de novo. Exige `X-Api-Key`. |
 | `POST /api/v1/ingestao/lotes` | Lote do scraper. Cria/atualiza uma oferta por página pela `chave` (D-34), com `opcoes` e `codigosEmec`, e completa com o Censo (D-35). Instituição não cadastrada: **422**. Exige `X-Api-Key`. |
+| `GET /api/v1/assinatura/planos` | Planos da tela de assinatura, do mais barato ao mais caro (D-54). |
+| `GET /api/v1/assinatura` | Assinatura vigente do usuário: `{plano, status, renovaEm}`, ou **204** se não houver (D-56). |
+| `PUT /api/v1/assinatura` | Assina ou troca de plano. Corpo `{ "plano": "plus" }`. Plano inexistente: **400**; o mesmo plano já ativo: **409**. |
+| `POST /api/v1/assinatura/cancelar` | Agenda o cancelamento; o acesso continua até o `renovaEm`. Sem assinatura ou já agendado: **409**. |
+| `POST /api/v1/assinatura/reativar` | Desfaz o cancelamento agendado. Se não estiver agendado: **409**. |
 
 Ingestão: o segredo vem de `SAUF_API_KEY` (mesmo valor nos dois projetos). Sem ele, as rotas
 de ingestão respondem 401. Resposta: `{criados, atualizados, inativados, rejeitados[]}`.
@@ -197,6 +211,7 @@ Migrações: uma só, `V1__estrutura_inicial.sql`, com todas as tabelas acima e 
 Censo (09/10/2026, pedido do Carlos). Como o banco ainda não tinha sido criado, as migrações
 de rascunho (V1 a V5) foram juntadas. A partir de agora, com o Supabase em uso, **toda mudança
 no banco vira uma migração nova** (`V2__...`), nunca uma edição da V1.
+Assinaturas: `V2026_10_21_2033__assinaturas.sql` (nome com data, D-52).
 
 Paginação: `page` (começa em 0), `size` (padrão 12, máximo 50) e `sort` (ex.: `sort=nome,asc`).
 Swagger: `/api/v1/swagger`.
@@ -216,6 +231,8 @@ aberta e pode mudar sem esforço grande.
 | P-25 | Duração convertida em semestres **no scraper** só quando o texto é simples ("5 anos" → 10, "3,5 anos" → 7); o texto original vai sempre em `duracaoTexto`. | `sauf-scraper`: `semestres_de_texto` |
 | P-11 | **Provisório** (09/10/2026): filtro **`notaCorteMax`** de `GET /api/v1/cursos` **removido** enquanto não houver fonte de nota de corte; volta quando houver. Se o front mandar o parâmetro, ele é ignorado e a lista vem sem esse filtro. Os campos de resposta sem fonte (`notaCorteSisu`, `notaCorteSisuMin`, `mensalidade`, `notaMec`, `imagemUrl`, `logoUrl`) continuam no contrato, vindo `null` (D-21), e estão descritos no Swagger com `@Schema` ("Ainda sem fonte de dados; vem null (P-11)"). | `CursoController.listar`, `FiltroOfertas`, DTOs de resposta |
 | P-26 | Oferta (página) ausente no lote seguinte fica **inativa** (não é apagada). | `IngestaoService.importarLote` |
+| P-14 | Sem gateway de pagamento, `PUT /api/v1/assinatura` age como pagamento confirmado: ativa a assinatura por 1 mês (ou troca o plano mantendo a data). Volta a depender do gateway quando ele existir (D-57). | `AssinaturaService.trocarPlano` |
+| D-55 | Até o login existir, todas as requisições usam um **usuário provisório** fixo e `assinatura.usuario_id` fica sem chave estrangeira. Com o login, muda só a classe `UsuarioLogado` e uma migração nova cria a chave estrangeira. | `comum/UsuarioLogado.java` |
 
 ## 5. Pontos pendentes
 
@@ -246,7 +263,7 @@ aberta e pode mudar sem esforço grande.
 
 | Código | Pendência | Observação |
 |---|---|---|
-| P-09 | **Login e autenticação**: Supabase Auth ou login próprio (Spring Security)? | Deixado para o final por decisão do Carlos. |
+| ~~P-09~~ | **Login e autenticação**: Supabase Auth ou login próprio (Spring Security)? | Resolvido: D-55 (login próprio). Implementação pendente. |
 | P-10 | **Contradição no front**: a ADR-005 decidiu token em cookie HttpOnly, mas o `client.ts` lê o token do `localStorage`. | Resolver junto com P-09. |
 | P-11 | **Fontes de dados ainda inexistentes**: mensalidade, imagens dos cursos, logos das universidades. Nota MEC resolvida pela D-49 e notas de corte pela D-50/D-53. | Na v1 vêm `null` (D-21). |
 | P-12 | **Formas de ingresso e próximos prazos/editais** por universidade. | `FormaIngresso` não tem relação no DER. |

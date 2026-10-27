@@ -1,0 +1,10 @@
+package br.com.sauf_api.assinatura;
+
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface AssinaturaRepository extends JpaRepository<Assinatura, UUID> {
+
+    Optional<Assinatura> findFirstByUsuarioIdOrderByCriadaEmDesc(UUID usuarioId);
+}

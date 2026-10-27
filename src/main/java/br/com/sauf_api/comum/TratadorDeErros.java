@@ -31,6 +31,11 @@ public class TratadorDeErros {
         return responder(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage(), Map.of());
     }
 
+    @ExceptionHandler(AcaoNaoPermitidaException.class)
+    ResponseEntity<ErroResposta> acaoNaoPermitida(AcaoNaoPermitidaException e) {
+        return responder(HttpStatus.CONFLICT, e.getMessage(), Map.of());
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ErroResposta> corpoIlegivel(HttpMessageNotReadableException e) {
         return responder(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido", Map.of());
