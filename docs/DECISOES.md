@@ -142,6 +142,12 @@ Vêm da comparação entre as telas do protótipo e os dados que temos (`05-prot
 | D-56 | **Usuário sem assinatura: `GET /api/v1/assinatura` responde `204 No Content`.** | Diferencia "não tem assinatura" de erro, sem inventar um corpo vazio. |
 | D-57 | **A assinatura renova (+1 mês) só com pagamento confirmado.** Sem confirmação, ela vence no `renovaEm` (o acesso vai até esse dia, inclusive) e passa a contar como sem assinatura. | Ninguém fica com acesso sem ter pago. |
 
+### Endereço da sede (26/10/2026)
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-58 | **Endereço da sede da IES vem do Censo** (fase C, 26/10/2026). O `censo` lê `DS_ENDERECO_IES`, `DS_NUMERO_ENDERECO_IES`, `DS_COMPLEMENTO_ENDERECO_IES`, `NO_BAIRRO_IES` e `NU_CEP_IES` do arquivo de IES (cidade e UF já vinham de `NO_MUNICIPIO_IES` e `SG_UF_IES`); vazio vira `null`. Fica na `instituicao` (`endereco_*`, migration `V2026_10_26_1925__endereco_instituicao.sql`) e sai só no detalhe da universidade, como objeto `enderecoSede` (logradouro, numero, complemento, bairro, cep, cidade, uf); a listagem continua com cidade e UF. CEP guardado e devolvido **só com os 8 dígitos**; a máscara (87020-900) é do front (decidido pelo Carlos em 26/10/2026). É o endereço da **sede**, não de cada campus, e por isso o campo se chama `enderecoSede`. O endereço completo aparece **só na página da universidade, com o rótulo "Sede"**. **Curso ou oferta de campus fora da sede (ex.: Umuarama, Goioerê) mostra só a cidade/UF do campus, nunca o endereço da sede, nem com o rótulo "Sede"**, para não indicar o lugar errado (opção recomendada, confirmada pelo Carlos em 26/10/2026). Hoje nenhuma resposta de oferta ou de curso expõe endereço; se um dia expuser, a oferta só leva o endereço da sede quando a cidade/UF dela for igual à da sede. | Fonte oficial que já usamos; dispensa o G5 (e-MEC). |
+
 ---
 
 ## 3. Estrutura da v1 (implementada)
@@ -292,3 +298,4 @@ Itens que mudam algo no `sauf-web-front` quando a API real substituir os mocks:
 5. Formato dos enums (P-03). O grau `bacharelado_e_licenciatura` deixa de ser usado pelas
    ofertas: com as opções em lista (D-34), bacharelado e licenciatura vêm como duas opções.
 6. Áreas passam a ser as do Censo (D-18), por exemplo "Saúde e bem-estar" em vez de "Saúde".
+7. O detalhe da universidade ganha `enderecoSede` (D-58), exibido com o rótulo "Sede"; CEP só com dígitos (o front aplica a máscara). Em cursos/ofertas de campus fora da sede, mostrar só a cidade/UF da oferta, nunca o endereço da sede (nem como "Sede"); o endereço só aparece numa oferta quando a cidade/UF dela for igual à da sede. Campos `null` aparecem como "Sem informação".

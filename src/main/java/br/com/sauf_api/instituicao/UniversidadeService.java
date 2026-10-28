@@ -58,6 +58,7 @@ public class UniversidadeService {
                 i.getOrganizacaoAcademica(),
                 i.getCidade(),
                 i.getUf(),
+                UniversidadeDetalhe.EnderecoResposta.de(i),
                 i.getSiteUrl(),
                 i.getLogoUrl(),
                 i.getNotaMec(),

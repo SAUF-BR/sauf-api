@@ -37,7 +37,9 @@ class IngestaoApiTest {
               "instituicoes": [{
                 "codigoEmec": 57, "nome": "UNIVERSIDADE ESTADUAL DE MARINGÁ", "sigla": "UEM",
                 "tipo": "publica", "categoriaAdministrativa": "publica_estadual",
-                "organizacaoAcademica": "universidade", "uf": "PR", "cidade": "Maringá"
+                "organizacaoAcademica": "universidade", "uf": "PR", "cidade": "Maringá",
+                "endereco": {"logradouro": "Avenida Colombo", "numero": "5790",
+                             "complemento": "Campus Universitário", "bairro": "Zona 7", "cep": "87020900"}
               }],
               "ofertas": [
                 {"codigoEmec": 3402, "codigoEmecInstituicao": 57, "nome": "Engenharia Civil",
@@ -102,6 +104,40 @@ class IngestaoApiTest {
                         .header("X-Api-Key", "errada")
                         .content(CENSO))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void censoGuardaOEnderecoDaSede() throws Exception {
+        censo().andExpect(status().isOk());
+        var uem = instituicoes.findByCodigoEmec(57).orElseThrow();
+
+        mvc.perform(get("/api/v1/universidades/{id}", uem.getId()))
+                .andExpect(jsonPath("$.enderecoSede.logradouro").value("Avenida Colombo"))
+                .andExpect(jsonPath("$.enderecoSede.numero").value("5790"))
+                .andExpect(jsonPath("$.enderecoSede.complemento").value("Campus Universitário"))
+                .andExpect(jsonPath("$.enderecoSede.bairro").value("Zona 7"))
+                .andExpect(jsonPath("$.enderecoSede.cep").value("87020900"))
+                .andExpect(jsonPath("$.enderecoSede.cidade").value("Maringá"))
+                .andExpect(jsonPath("$.enderecoSede.uf").value("PR"));
+    }
+
+    @Test
+    void censoSemEnderecoMantemCidadeEUf() throws Exception {
+        mvc.perform(enviar("/api/v1/ingestao/censo", CENSO.replaceAll("(?s),\\s*\"endereco\": \\{[^}]*}", "")))
+                .andExpect(status().isOk());
+        var uem = instituicoes.findByCodigoEmec(57).orElseThrow();
+
+        mvc.perform(get("/api/v1/universidades/{id}", uem.getId()))
+                .andExpect(jsonPath("$.enderecoSede.logradouro").doesNotExist())
+                .andExpect(jsonPath("$.enderecoSede.cep").doesNotExist())
+                .andExpect(jsonPath("$.enderecoSede.cidade").value("Maringá"))
+                .andExpect(jsonPath("$.enderecoSede.uf").value("PR"));
+    }
+
+    @Test
+    void cepComMascaraDevolve400() throws Exception {
+        mvc.perform(enviar("/api/v1/ingestao/censo", CENSO.replace("\"87020900\"", "\"87020-900\"")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

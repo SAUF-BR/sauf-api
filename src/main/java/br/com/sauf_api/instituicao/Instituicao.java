@@ -1,6 +1,7 @@
 package br.com.sauf_api.instituicao;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -50,6 +51,9 @@ public class Instituicao {
     @Column(name = "nota_mec")
     private Integer notaMec;
 
+    @Embedded
+    private Endereco endereco;
+
     @Column(nullable = false)
     private boolean ativa = true;
 
@@ -74,7 +78,8 @@ public class Instituicao {
             String categoriaAdministrativa,
             String organizacaoAcademica,
             String uf,
-            String cidade) {
+            String cidade,
+            Endereco endereco) {
         this.nome = nome;
         this.sigla = sigla;
         this.tipo = tipo;
@@ -82,6 +87,7 @@ public class Instituicao {
         this.organizacaoAcademica = organizacaoAcademica;
         this.uf = uf;
         this.cidade = cidade;
+        this.endereco = endereco;
         this.atualizadaEm = Instant.now();
     }
 
@@ -147,6 +153,11 @@ public class Instituicao {
 
     public void setLogoUrl(String logoUrl) {
         this.logoUrl = logoUrl;
+    }
+
+    /** Pode ser null: o Hibernate devolve null quando todas as colunas do endereço estão vazias!! */
+    public Endereco getEndereco() {
+        return endereco;
     }
 
     public Integer getNotaMec() {

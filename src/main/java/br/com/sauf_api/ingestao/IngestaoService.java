@@ -6,6 +6,7 @@ import br.com.sauf_api.censo.CensoCurso;
 import br.com.sauf_api.censo.CensoCursoRepository;
 import br.com.sauf_api.curso.Curso;
 import br.com.sauf_api.curso.CursoRepository;
+import br.com.sauf_api.instituicao.Endereco;
 import br.com.sauf_api.instituicao.Instituicao;
 import br.com.sauf_api.instituicao.InstituicaoRepository;
 import br.com.sauf_api.oferta.Grau;
@@ -70,7 +71,8 @@ public class IngestaoService {
                     dados.categoriaAdministrativa(),
                     dados.organizacaoAcademica(),
                     dados.uf(),
-                    dados.cidade());
+                    dados.cidade(),
+                    endereco(dados.endereco()));
             porCodigo.put(dados.codigoEmec(), instituicoes.save(instituicao));
             contar(resposta, existente.isPresent());
         }
@@ -122,6 +124,13 @@ public class IngestaoService {
         log.info("censo {} importado: {} criados, {} atualizados, {} rejeitados",
                 lote.anoCenso(), resposta.getCriados(), resposta.getAtualizados(), resposta.getRejeitados().size());
         return resposta;
+    }
+
+    private static Endereco endereco(LoteCensoRequest.Endereco dados) {
+        if (dados == null) {
+            return null;
+        }
+        return new Endereco(dados.logradouro(), dados.numero(), dados.complemento(), dados.bairro(), dados.cep());
     }
 
     public RespostaIngestao importarLote(LoteScraperRequest lote) {

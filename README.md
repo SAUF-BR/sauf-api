@@ -65,7 +65,7 @@ Os dados chegam pelo `sauf-scraper`, com o mesmo `SAUF_API_KEY` no `.env` dos do
 e `SAUF_API_BASE_URL=http://localhost:8080` no scraper:
 
 ```
-uv run sauf-scraper censo        # 1º: instituições e ofertas do Censo (INEP)
+uv run sauf-scraper censo        # 1º: instituições (com endereço da sede) e ofertas do Censo (INEP)
 uv run sauf-scraper --ies uem    # 2º: dados do site da UEM
 uv run sauf-scraper igc --arquivo fontes/IGC_2023.xlsx   # 3º: nota MEC (IGC)
 uv run sauf-scraper sisu --arquivo fontes/portal-sisu-sisu-2025-inscricoes-e-notas-de-corte.xlsx  # 4º: cortes

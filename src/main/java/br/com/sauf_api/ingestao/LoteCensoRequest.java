@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record LoteCensoRequest(
@@ -24,7 +25,15 @@ public record LoteCensoRequest(
             String categoriaAdministrativa,
             String organizacaoAcademica,
             @NotNull @Pattern(regexp = "[A-Z]{2}") String uf,
-            @NotBlank String cidade) {}
+            @NotBlank String cidade,
+            @Valid Endereco endereco) {}
+
+    public record Endereco(
+            @Size(max = 200) String logradouro,
+            @Size(max = 20) String numero,
+            @Size(max = 200) String complemento,
+            @Size(max = 100) String bairro,
+            @Pattern(regexp = "\\d{8}") String cep) {}
 
     public record Oferta(
             @NotNull @Positive Integer codigoEmec,
