@@ -5,15 +5,20 @@ import br.com.sauf_api.comum.RecursoNaoEncontradoException;
 import br.com.sauf_api.oferta.EstatisticasOfertas;
 import br.com.sauf_api.oferta.FiltroOfertas;
 import br.com.sauf_api.oferta.Modalidade;
+import br.com.sauf_api.oferta.OfertaCurso;
 import br.com.sauf_api.oferta.OfertaCursoRepository;
 import br.com.sauf_api.oferta.OfertaEspecificacoes;
 import br.com.sauf_api.oferta.OfertaResposta;
 import br.com.sauf_api.sisu.NotasSisu;
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,12 +77,14 @@ public class UniversidadeService {
         var cursosPorArea = estatisticas.cursosPorArea(id).entrySet().stream()
                 .map(e -> new UniversidadeDetalhe.AreaCursos(e.getKey(), e.getValue()))
                 .toList();
+        List<OfertaCurso> ofertasAtivas = ofertas.findByInstituicaoIdAndAtivaTrue(id);
         return new UniversidadeDetalhe(
                 i.getId(),
                 i.getCodigoEmec(),
                 i.getNome(),
                 i.getSigla(),
                 i.getTipo(),
+                esfera(i.getCategoriaAdministrativa()),
                 i.getCategoriaAdministrativa(),
                 i.getOrganizacaoAcademica(),
                 i.getCidade(),
@@ -85,10 +92,18 @@ public class UniversidadeService {
                 UniversidadeDetalhe.EnderecoResposta.de(i),
                 i.getSiteUrl(),
                 i.getLogoUrl(),
+                null, // capaUrl: ainda sem fonte
+                null, // anoFundacao: ainda sem fonte
                 i.getNotaMec(),
+                gratuita(ofertasAtivas),
+                vagasPorAno(ofertasAtivas),
                 numeros.totalCursos(),
-                numeros.modalidades(),
+                List.of(), // sobre: ainda sem fonte
+                modalidadesOfertadas(ofertasAtivas),
                 cursosPorArea,
+                List.of(), // formasIngresso: ainda sem fonte
+                null, // notaFormasIngresso: ainda sem fonte
+                null, // proximoPrazo: ainda sem fonte
                 i.getAtualizadaEm());
     }
 
@@ -101,5 +116,54 @@ public class UniversidadeService {
     private Instituicao buscar(UUID id) {
         return instituicoes.findByIdAndAtivaTrue(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Universidade", id));
+    }
+
+    static String esfera(String categoriaAdministrativa) {
+        if (categoriaAdministrativa == null) {
+            return null;
+        }
+        String categoria = FiltroUniversidades.normalizar(categoriaAdministrativa.replace('_', ' '));
+        if (!categoria.startsWith("publica")) {
+            return null;
+        }
+        if (categoria.contains("federal")) {
+            return "federal";
+        }
+        if (categoria.contains("estadual")) {
+            return "estadual";
+        }
+        if (categoria.contains("municipal")) {
+            return "municipal";
+        }
+        return null;
+    }
+
+    static boolean gratuita(List<OfertaCurso> ofertas) {
+        List<Boolean> informadas = ofertas.stream()
+                .map(OfertaCurso::getGratuito)
+                .filter(Objects::nonNull)
+                .toList();
+        return !informadas.isEmpty() && informadas.stream().allMatch(Boolean::booleanValue);
+    }
+
+    static Integer vagasPorAno(List<OfertaCurso> ofertas) {
+        return ofertas.stream()
+                .map(OfertaCurso::getVagas)
+                .filter(Objects::nonNull)
+                .reduce(Integer::sum)
+                .orElse(null);
+    }
+
+    static List<UniversidadeDetalhe.ModalidadeOfertada> modalidadesOfertadas(List<OfertaCurso> ofertas) {
+        Map<Modalidade, Long> porModalidade = ofertas.stream()
+                .filter(o -> o.getModalidade() != null)
+                .collect(Collectors.groupingBy(
+                        OfertaCurso::getModalidade, () -> new EnumMap<>(Modalidade.class), Collectors.counting()));
+        return Arrays.stream(Modalidade.values())
+                .map(m -> {
+                    long total = porModalidade.getOrDefault(m, 0L);
+                    return new UniversidadeDetalhe.ModalidadeOfertada(m, total > 0, total, null);
+                })
+                .toList();
     }
 }

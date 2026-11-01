@@ -158,6 +158,15 @@ Vêm da comparação entre as telas do protótipo e os dados que temos (`05-prot
 | D-62 | **`GET /universidades/contagens`** devolve `{tipo: {publica, privada}, modalidade: {presencial, semipresencial, ead}}` com os mesmos filtros da listagem, em **busca facetada**: a contagem de cada tipo ignora o filtro de tipo e a de cada modalidade ignora o filtro de modalidade; os outros filtros valem. | Mostrar quantas universidades cada opção traria. Se combinasse com o próprio grupo, as outras opções dariam sempre 0. |
 | D-63 | **`GET /universidades/cidades?uf=PR`** devolve as cidades com universidade ativa no estado, sem repetir e em ordem alfabética. Ignora os outros filtros. Sem `uf`, responde `[]` com **200**. | Preencher o select de cidade depois de escolher o estado, sem o front precisar tratar erro antes disso. |
 
+### Visão geral da universidade (31/10/2026)
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-64 | **`esfera`** no detalhe da universidade: `federal`, `estadual` ou `municipal`, tirada da `categoriaAdministrativa` do Censo; `null` para privadas. Aceita `publica_estadual` (scraper) e `Pública Estadual` (exemplo do Postman), com a mesma normalização da D-60. | O selo "Pública estadual" da tela, sem o front interpretar a categoria. |
+| D-65 | **`vagasPorAno`** = soma das `vagas` das ofertas **ativas** que têm essa informação (Censo, D-35); `null` quando nenhuma tem. **`gratuita`** = `true` quando todas as ofertas ativas com essa informação são gratuitas (e pelo menos uma tem); senão `false`. | Números da universidade calculados no backend, com a mesma fonte das ofertas. |
+| D-66 | **`modalidades` do detalhe é uma lista de objetos** `{modalidade, disponivel, totalCursos, descricao}`, sempre com as 3, na ordem presencial, semipresencial e ead. `descricao` vem `null` (sem fonte). A listagem continua com a lista de textos. | O bloco "Modalidades ofertadas" mostra as 3, marcando as indisponíveis. |
+| D-67 | **Campos da visão geral sem fonte** ficam no contrato: `capaUrl`, `anoFundacao`, `notaFormasIngresso` e `proximoPrazo` vêm `null`; `sobre` e `formasIngresso` vêm `[]`. Fonte prevista: arquivo por IES da fase D (D-51) e P-12. A distância até o usuário **não entra** (D-51). | O front já desenha a tela completa e esconde o que vier vazio. |
+
 ---
 
 ## 3. Estrutura da v1 (implementada)
@@ -207,7 +216,7 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
 | `GET /api/v1/universidades` | Listagem de universidades, paginada (12 por página, por nome), com filtros `busca`, `uf`, `cidade`, `tipo`, `modalidade` e `notaMec` (D-59 a D-61). |
 | `GET /api/v1/universidades/contagens` | Contadores dos filtros de tipo e modalidade, com os mesmos filtros da listagem (busca facetada, D-62). |
 | `GET /api/v1/universidades/cidades` | Cidades do estado (`uf`) com universidade ativa, para o select de cidade (D-63). |
-| `GET /api/v1/universidades/{id}` | Detalhe da universidade, com cursos por área. |
+| `GET /api/v1/universidades/{id}` | Detalhe da universidade (visão geral), com `esfera`, `enderecoSede`, cursos por área, `vagasPorAno`, `gratuita` e as 3 `modalidades` (D-58, D-64 a D-67). |
 | `GET /api/v1/universidades/{id}/ofertas` | Cursos ofertados pela universidade (filtros `area`, `modalidade`, `grau`). |
 | `GET /api/v1/areas` | Áreas para os filtros, com contagem de cursos. |
 | `POST /api/v1/ingestao/censo` | Import do Censo (`sauf-scraper censo`). Cria/atualiza instituições pelo código e-MEC, cursos genéricos pelo rótulo Cine (D-31, D-36) e a tabela `censo_curso`. **Não cria ofertas** (D-33); depois do import, as ofertas do site já existentes são completadas de novo. Exige `X-Api-Key`. |
@@ -311,3 +320,4 @@ Itens que mudam algo no `sauf-web-front` quando a API real substituir os mocks:
    ofertas: com as opções em lista (D-34), bacharelado e licenciatura vêm como duas opções.
 6. Áreas passam a ser as do Censo (D-18), por exemplo "Saúde e bem-estar" em vez de "Saúde".
 7. O detalhe da universidade ganha `enderecoSede` (D-58), exibido com o rótulo "Sede"; CEP só com dígitos (o front aplica a máscara). Em cursos/ofertas de campus fora da sede, mostrar só a cidade/UF da oferta, nunca o endereço da sede (nem como "Sede"); o endereço só aparece numa oferta quando a cidade/UF dela for igual à da sede. Campos `null` aparecem como "Sem informação".
+8. O detalhe da universidade ganha `esfera` (D-64), `vagasPorAno` e `gratuita` (D-65), e `modalidades` passa a ser uma lista de objetos `{modalidade, disponivel, totalCursos, descricao}` (D-66). O mock do front usa `endereco`, e a API manda `enderecoSede` (D-58). Sem `distanciaKm` (D-51).
