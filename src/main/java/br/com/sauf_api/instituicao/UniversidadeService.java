@@ -4,10 +4,14 @@ import br.com.sauf_api.comum.Pagina;
 import br.com.sauf_api.comum.RecursoNaoEncontradoException;
 import br.com.sauf_api.oferta.EstatisticasOfertas;
 import br.com.sauf_api.oferta.FiltroOfertas;
+import br.com.sauf_api.oferta.Modalidade;
 import br.com.sauf_api.oferta.OfertaCursoRepository;
 import br.com.sauf_api.oferta.OfertaEspecificacoes;
 import br.com.sauf_api.oferta.OfertaResposta;
 import br.com.sauf_api.sisu.NotasSisu;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +44,26 @@ public class UniversidadeService {
         var pagina = instituicoes.findAll(filtro.especificacao(), pageable);
         var numeros = estatisticas.porInstituicao(pagina.map(Instituicao::getId).getContent());
         return Pagina.de(pagina, i -> UniversidadeResumo.de(i, numeros.getOrDefault(i.getId(), SEM_OFERTAS)));
+    }
+
+    public ContagensUniversidades contagens(FiltroUniversidades filtro) {
+        Map<String, Long> porTipo = new LinkedHashMap<>();
+        for (TipoInstituicao tipo : TipoInstituicao.values()) {
+            porTipo.put(tipo.valor(), instituicoes.count(filtro.comTipos(List.of(tipo)).especificacao()));
+        }
+        Map<String, Long> porModalidade = new LinkedHashMap<>();
+        for (Modalidade modalidade : Modalidade.values()) {
+            porModalidade.put(modalidade.valor(),
+                    instituicoes.count(filtro.comModalidades(List.of(modalidade)).especificacao()));
+        }
+        return new ContagensUniversidades(porTipo, porModalidade);
+    }
+
+    public List<String> cidades(String uf) {
+        if (uf == null || uf.isBlank()) {
+            return List.of();
+        }
+        return instituicoes.cidadesComUniversidadeAtiva(uf.trim().toUpperCase());
     }
 
     public UniversidadeDetalhe detalhar(UUID id) {
