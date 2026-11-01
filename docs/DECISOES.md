@@ -148,6 +148,16 @@ Vêm da comparação entre as telas do protótipo e os dados que temos (`05-prot
 |---|---|---|
 | D-58 | **Endereço da sede da IES vem do Censo** (fase C, 26/10/2026). O `censo` lê `DS_ENDERECO_IES`, `DS_NUMERO_ENDERECO_IES`, `DS_COMPLEMENTO_ENDERECO_IES`, `NO_BAIRRO_IES` e `NU_CEP_IES` do arquivo de IES (cidade e UF já vinham de `NO_MUNICIPIO_IES` e `SG_UF_IES`); vazio vira `null`. Fica na `instituicao` (`endereco_*`, migration `V2026_10_26_1925__endereco_instituicao.sql`) e sai só no detalhe da universidade, como objeto `enderecoSede` (logradouro, numero, complemento, bairro, cep, cidade, uf); a listagem continua com cidade e UF. CEP guardado e devolvido **só com os 8 dígitos**; a máscara (87020-900) é do front (decidido pelo Carlos em 26/10/2026). É o endereço da **sede**, não de cada campus, e por isso o campo se chama `enderecoSede`. O endereço completo aparece **só na página da universidade, com o rótulo "Sede"**. **Curso ou oferta de campus fora da sede (ex.: Umuarama, Goioerê) mostra só a cidade/UF do campus, nunca o endereço da sede, nem com o rótulo "Sede"**, para não indicar o lugar errado (opção recomendada, confirmada pelo Carlos em 26/10/2026). Hoje nenhuma resposta de oferta ou de curso expõe endereço; se um dia expuser, a oferta só leva o endereço da sede quando a cidade/UF dela for igual à da sede. | Fonte oficial que já usamos; dispensa o G5 (e-MEC). |
 
+### Listagem de universidades (31/10/2026)
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-59 | **Filtro `notaMec` por faixa** em `GET /universidades`: `notaMec=4-5` (nota 4 ou 5) ou `notaMec=3`. Usa a `nota_mec` da instituição (IGC faixa, D-49). Outro valor responde **400** com o campo em `fields` (`enum FaixaNotaMec`). Sem o parâmetro, não filtra ("Todas"). | São as opções do filtro na tela de universidades. |
+| D-60 | **Busca e cidade sem diferenciar maiúscula, acento e hífen.** O hífen vira espaço e a ordem das palavras importa ("pos-graduacao" acha "Pós-Graduação"). A regra fica num lugar só, no `FiltroUniversidades`: `normalizar()` trata o texto digitado (Java) e `normalizado()` trata a coluna (`translate` no banco, que funciona no Postgres e no H2). A busca procura no nome e na sigla. **Busca que fica vazia depois de normalizar (só "-" ou só espaços) é ignorada** e traz todas, igual à busca vazia. | Pedido no PR da TR-333; o usuário não precisa acertar acento nem hífen. |
+| D-61 | **`tipo` e `modalidade` aceitam vários valores** (`tipo=publica,privada` ou o parâmetro repetido). Dentro do mesmo filtro vale "ou"; entre filtros diferentes, "e". Valor inválido: **400**. | Os filtros da tela são caixas de seleção múltipla. |
+| D-62 | **`GET /universidades/contagens`** devolve `{tipo: {publica, privada}, modalidade: {presencial, semipresencial, ead}}` com os mesmos filtros da listagem, em **busca facetada**: a contagem de cada tipo ignora o filtro de tipo e a de cada modalidade ignora o filtro de modalidade; os outros filtros valem. | Mostrar quantas universidades cada opção traria. Se combinasse com o próprio grupo, as outras opções dariam sempre 0. |
+| D-63 | **`GET /universidades/cidades?uf=PR`** devolve as cidades com universidade ativa no estado, sem repetir e em ordem alfabética. Ignora os outros filtros. Sem `uf`, responde `[]` com **200**. | Preencher o select de cidade depois de escolher o estado, sem o front precisar tratar erro antes disso. |
+
 ---
 
 ## 3. Estrutura da v1 (implementada)
@@ -182,8 +192,8 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
   (única por instituição), `nome_no_site`, `modalidade`, `turno` (texto da página),
   `duracao_texto`, `duracao_semestres`, `cidade`, `uf`, `vagas`, `gratuito`, `url_origem`,
   `nota_corte_sisu`, `mensalidade`, `sobre` (texto, D-37), `ativa`, `coletada_em`.
-  - **`oferta_opcao`**: (`oferta_id`, `grau`) + `turno`. As opções que a página mostra.
-  - **`oferta_codigo_emec`**: (`oferta_id`, `codigo_emec`). Uso interno (D-35).
+    - **`oferta_opcao`**: (`oferta_id`, `grau`) + `turno`. As opções que a página mostra.
+    - **`oferta_codigo_emec`**: (`oferta_id`, `codigo_emec`). Uso interno (D-35).
 - **`censo_curso`** (complemento, D-33): `codigo_emec` (PK), `instituicao_id`, `curso_id`, `nome`,
   `grau`, `modalidade`, `cidade`, `uf`, `vagas`, `gratuito`, `ano_censo`.
 
@@ -194,7 +204,9 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
 | `GET /api/v1/cursos` | Listagem do catálogo (tela de cursos), paginada, com filtros `area`, `modalidade`, `grau`, `duracaoSemestres`, `uf`, `cidade`, `busca`. Cada item traz `totalUniversidades`, `modalidades`, `graus`, duração mínima/máxima em semestres e a menor nota de corte, calculados só com as ofertas que passam nos filtros. Sem filtro de nota de corte por enquanto (ver seção 4). |
 | `GET /api/v1/cursos/{id}` | Detalhe do curso genérico (aceita `uf`/`cidade` para os números da região). |
 | `GET /api/v1/cursos/{id}/ofertas` | Universidades que ofertam o curso, uma por página do site, com `opcoes` (`grau` + `turno`), o texto `sobre` (D-37) e o link "acessar o site". Filtros `modalidade`, `grau`, `uf`, `cidade`. |
-| `GET /api/v1/universidades` | Listagem de universidades, paginada, com filtros `uf`, `cidade`, `tipo`, `modalidade`, `busca`. |
+| `GET /api/v1/universidades` | Listagem de universidades, paginada (12 por página, por nome), com filtros `busca`, `uf`, `cidade`, `tipo`, `modalidade` e `notaMec` (D-59 a D-61). |
+| `GET /api/v1/universidades/contagens` | Contadores dos filtros de tipo e modalidade, com os mesmos filtros da listagem (busca facetada, D-62). |
+| `GET /api/v1/universidades/cidades` | Cidades do estado (`uf`) com universidade ativa, para o select de cidade (D-63). |
 | `GET /api/v1/universidades/{id}` | Detalhe da universidade, com cursos por área. |
 | `GET /api/v1/universidades/{id}/ofertas` | Cursos ofertados pela universidade (filtros `area`, `modalidade`, `grau`). |
 | `GET /api/v1/areas` | Áreas para os filtros, com contagem de cursos. |

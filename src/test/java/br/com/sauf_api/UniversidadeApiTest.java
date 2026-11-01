@@ -27,7 +27,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Testes da listagem de universidades e das rotas auxiliares (TR-330). */
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
@@ -109,6 +108,34 @@ class UniversidadeApiTest {
         mvc.perform(get("/api/v1/universidades").param("busca", " - "))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void buscaComHifenNoLugarDoEspacoAcha() throws Exception {
+        instituicao(6666, "Universidade de São Paulo", "USP", TipoInstituicao.PUBLICA, "SP", "São Paulo");
+
+        mvc.perform(get("/api/v1/universidades").param("busca", "são-paulo"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].sigla").value("USP"));
+    }
+
+    @Test
+    void filtroDeCidadeIgnoraAcentosEMaiusculas() throws Exception {
+        instituicao(6666, "Universidade de São Paulo", "USP", TipoInstituicao.PUBLICA, "SP", "São Paulo");
+
+        mvc.perform(get("/api/v1/universidades").param("cidade", "maringa"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].sigla").value("UEM"));
+
+        mvc.perform(get("/api/v1/universidades").param("cidade", "MARINGÁ"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].sigla").value("UEM"));
+
+        mvc.perform(get("/api/v1/universidades").param("cidade", "sao paulo"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].sigla").value("USP"));
     }
 
     @Test

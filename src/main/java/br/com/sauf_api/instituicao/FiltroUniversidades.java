@@ -37,18 +37,19 @@ public record FiltroUniversidades(
         return (instituicao, query, cb) -> {
             List<Predicate> predicados = new ArrayList<>();
             predicados.add(cb.isTrue(instituicao.get("ativa")));
-            String textoBusca = textoDaBusca();
+            String textoBusca = normalizar(busca);
             if (!textoBusca.isEmpty()) {
                 String termo = "%" + textoBusca + "%";
                 predicados.add(cb.or(
-                        cb.like(minusculoSemAcento(cb, instituicao.get("nome")), termo),
-                        cb.like(minusculoSemAcento(cb, instituicao.get("sigla")), termo)));
+                        cb.like(normalizado(cb, instituicao.get("nome")), termo),
+                        cb.like(normalizado(cb, instituicao.get("sigla")), termo)));
             }
             if (uf != null && !uf.isBlank()) {
                 predicados.add(cb.equal(cb.upper(instituicao.get("uf")), uf.trim().toUpperCase()));
             }
-            if (cidade != null && !cidade.isBlank()) {
-                predicados.add(cb.equal(cb.lower(instituicao.get("cidade")), cidade.trim().toLowerCase()));
+            String textoCidade = normalizar(cidade);
+            if (!textoCidade.isEmpty()) {
+                predicados.add(cb.equal(normalizado(cb, instituicao.get("cidade")), textoCidade));
             }
             if (tipos != null && !tipos.isEmpty()) {
                 predicados.add(instituicao.get("tipo").in(tipos));
@@ -69,18 +70,15 @@ public record FiltroUniversidades(
         };
     }
 
-    private String textoDaBusca() {
-        if (busca == null) {
+    static String normalizar(String texto) {
+        if (texto == null) {
             return "";
         }
-        return semAcento(busca.toLowerCase()).replace('-', ' ').trim().replaceAll("\\s+", " ");
+        String semAcento = Normalizer.normalize(texto.toLowerCase(), Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return semAcento.replace('-', ' ').trim().replaceAll("\\s+", " ");
     }
 
-    private static Expression<String> minusculoSemAcento(CriteriaBuilder cb, Expression<String> coluna) {
+    private static Expression<String> normalizado(CriteriaBuilder cb, Expression<String> coluna) {
         return cb.function("translate", String.class, cb.lower(coluna), cb.literal(COM_ACENTO), cb.literal(SEM_ACENTO));
-    }
-
-    private static String semAcento(String texto) {
-        return Normalizer.normalize(texto, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
     }
 }
