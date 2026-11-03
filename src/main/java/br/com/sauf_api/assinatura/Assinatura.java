@@ -36,6 +36,24 @@ public class Assinatura {
     @Column(name = "criada_em", nullable = false)
     private Instant criadaEm;
 
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+
+    @Column(name = "stripe_subscription_id", unique = true)
+    private String stripeSubscriptionId;
+
+    @Column(name = "cancelar_no_fim_periodo", nullable = false)
+    private boolean cancelarNoFimPeriodo;
+
+    @Column(name = "aceite_termo_maior_idade")
+    private Boolean aceiteTermoMaiorIdade;
+
+    @Column(name = "aceite_versao_termo", length = 20)
+    private String aceiteVersaoTermo;
+
+    @Column(name = "aceite_em")
+    private Instant aceiteEm;
+
     protected Assinatura() {}
 
     public Assinatura(UUID usuarioId, Plano plano, LocalDate renovaEm) {
@@ -95,5 +113,29 @@ public class Assinatura {
 
     public Instant getCriadaEm() {
         return criadaEm;
+    }
+
+    public String getStripeCustomerId() {
+        return stripeCustomerId;
+    }
+
+    public String getStripeSubscriptionId() {
+        return stripeSubscriptionId;
+    }
+
+    public boolean isCancelarNoFimPeriodo() {
+        return cancelarNoFimPeriodo;
+    }
+
+    public Boolean getAceiteTermoMaiorIdade() {
+        return aceiteTermoMaiorIdade;
+    }
+
+    public String getAceiteVersaoTermo() {
+        return aceiteVersaoTermo;
+    }
+
+    public Instant getAceiteEm() {
+        return aceiteEm;
     }
 }
