@@ -142,6 +142,17 @@ Vêm da comparação entre as telas do protótipo e os dados que temos (`05-prot
 | D-56 | **Usuário sem assinatura: `GET /api/v1/assinatura` responde `204 No Content`.** | Diferencia "não tem assinatura" de erro, sem inventar um corpo vazio. |
 | D-57 | **A assinatura renova (+1 mês) só com pagamento confirmado.** Sem confirmação, ela vence no `renovaEm` (o acesso vai até esse dia, inclusive) e passa a contar como sem assinatura. | Ninguém fica com acesso sem ter pago. |
 
+### Pagamentos com Stripe (03/11/2026, TR-336)
+
+Implementação da [ADR-BE-016](https://github.com/SAUF-BR/sauf-docs/blob/main/ADRs/backend/ADR-BE-016.md) (aprovada no PR). Numeração a partir da D-68 porque o PR da TR-334 já usa a D-64 a D-67.
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-68 | **Stripe configurado por variável de ambiente** (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_BASIC/PLUS/PREMIUM`, URLs de retorno), lidas em `sauf.stripe.*` (`StripeProperties`). **Sem `STRIPE_SECRET_KEY`, os pagamentos ficam desabilitados** e o resto da API sobe normalmente (mesmo comportamento da ingestão sem `SAUF_API_KEY`). Só chaves de **modo teste** (`sk_test_...`) no time. | Ninguém precisa de conta Stripe para trabalhar nas outras telas; segredo fora do Git. |
+| D-69 | **`StatusAssinatura` espelha o Stripe**: `INCOMPLETA`, `ATIVA`, `PAST_DUE`, `CANCELAMENTO_AGENDADO` (= `active` com `cancel_at_period_end`), `CANCELADA`. As constantes antigas não mudam de nome nem de valor no JSON. | Segue a ADR-BE-016 sem quebrar o contrato que o front já usa. |
+| D-70 | **Idempotência dos webhooks pela tabela `stripe_event`**, com o **id do evento do Stripe (`evt_...`) como chave primária, em texto** (a ADR previa UUID, mas o id do Stripe não é UUID). Evento repetido não é reprocessado. | Evitar renovar ou cobrar duas vezes quando o Stripe reenviar um evento. |
+| D-71 | **Tabela `pagamento`** com uma linha por invoice do Stripe (`stripe_invoice_id` único, valor em centavos, status `PAGO`/`FALHOU`/`REEMBOLSADO`). | Histórico sem depender do Dashboard e base para a regra de reembolso em 7 dias (CDC art. 49). |
+
 ### Endereço da sede (26/10/2026)
 
 | Código | Decisão | Motivo |
@@ -196,6 +207,12 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
     - **`oferta_codigo_emec`**: (`oferta_id`, `codigo_emec`). Uso interno (D-35).
 - **`censo_curso`** (complemento, D-33): `codigo_emec` (PK), `instituicao_id`, `curso_id`, `nome`,
   `grau`, `modalidade`, `cidade`, `uf`, `vagas`, `gratuito`, `ano_censo`.
+- **`assinatura`**: `id`, `usuario_id`, `plano`, `status`, `renova_em`, `criada_em` e, desde a TR-336,
+  `stripe_customer_id`, `stripe_subscription_id` (único), `cancelar_no_fim_periodo`,
+  `aceite_termo_maior_idade`, `aceite_versao_termo`, `aceite_em`.
+- **`pagamento`** (D-71): `id`, `assinatura_id`, `stripe_invoice_id` (único), `valor_centavos`,
+  `status`, `pago_em`, `criado_em`.
+- **`stripe_event`** (D-70): `id` (id do evento no Stripe), `tipo`, `recebido_em`, `processado_em`.
 
 ### Rotas da v1
 
