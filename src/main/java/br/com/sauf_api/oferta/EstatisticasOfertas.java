@@ -95,7 +95,8 @@ public class EstatisticasOfertas {
         CriteriaQuery<Tuple> q = cb.createTupleQuery();
         Root<OfertaCurso> oferta = q.from(OfertaCurso.class);
         Path<UUID> instituicaoId = oferta.get("instituicao").get("id");
-        q.multiselect(instituicaoId, cb.countDistinct(oferta.get("curso").get("id")))                .where(restricoes(cb, oferta, FiltroOfertas.vazio(), instituicaoId, instituicaoIds))
+        q.multiselect(instituicaoId, cb.countDistinct(oferta.get("curso").get("id")))
+                .where(restricoes(cb, oferta, FiltroOfertas.vazio(), instituicaoId, instituicaoIds))
                 .groupBy(instituicaoId);
 
         Map<UUID, Set<Modalidade>> modalidades = modalidades(FiltroOfertas.vazio(), "instituicao", instituicaoIds);
