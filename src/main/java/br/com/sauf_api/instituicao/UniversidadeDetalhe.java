@@ -14,7 +14,7 @@ public record UniversidadeDetalhe(
         String sigla,
         TipoInstituicao tipo,
         @Schema(description = "federal, estadual ou municipal, tirado da categoria administrativa; null para privadas")
-        String esfera,
+        Esfera esfera,
         String categoriaAdministrativa,
         String organizacaoAcademica,
         String cidade,

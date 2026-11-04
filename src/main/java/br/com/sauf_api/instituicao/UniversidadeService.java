@@ -2,6 +2,7 @@ package br.com.sauf_api.instituicao;
 
 import br.com.sauf_api.comum.Pagina;
 import br.com.sauf_api.comum.RecursoNaoEncontradoException;
+import br.com.sauf_api.curso.Curso;
 import br.com.sauf_api.oferta.EstatisticasOfertas;
 import br.com.sauf_api.oferta.FiltroOfertas;
 import br.com.sauf_api.oferta.Modalidade;
@@ -118,7 +119,7 @@ public class UniversidadeService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Universidade", id));
     }
 
-    static String esfera(String categoriaAdministrativa) {
+    static Esfera esfera(String categoriaAdministrativa) {
         if (categoriaAdministrativa == null) {
             return null;
         }
@@ -126,14 +127,10 @@ public class UniversidadeService {
         if (!categoria.startsWith("publica")) {
             return null;
         }
-        if (categoria.contains("federal")) {
-            return "federal";
-        }
-        if (categoria.contains("estadual")) {
-            return "estadual";
-        }
-        if (categoria.contains("municipal")) {
-            return "municipal";
+        for (Esfera esfera : Esfera.values()) {
+            if (categoria.contains(esfera.valor())) {
+                return esfera;
+            }
         }
         return null;
     }
@@ -155,13 +152,14 @@ public class UniversidadeService {
     }
 
     static List<UniversidadeDetalhe.ModalidadeOfertada> modalidadesOfertadas(List<OfertaCurso> ofertas) {
-        Map<Modalidade, Long> porModalidade = ofertas.stream()
+        Map<Modalidade, Set<Curso>> cursosPorModalidade = ofertas.stream()
                 .filter(o -> o.getModalidade() != null)
                 .collect(Collectors.groupingBy(
-                        OfertaCurso::getModalidade, () -> new EnumMap<>(Modalidade.class), Collectors.counting()));
+                        OfertaCurso::getModalidade, () -> new EnumMap<>(Modalidade.class),
+                        Collectors.mapping(OfertaCurso::getCurso, Collectors.toSet())));
         return Arrays.stream(Modalidade.values())
                 .map(m -> {
-                    long total = porModalidade.getOrDefault(m, 0L);
+                    long total = cursosPorModalidade.getOrDefault(m, Set.of()).size();
                     return new UniversidadeDetalhe.ModalidadeOfertada(m, total > 0, total, null);
                 })
                 .toList();

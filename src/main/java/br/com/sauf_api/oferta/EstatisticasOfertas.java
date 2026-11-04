@@ -95,8 +95,7 @@ public class EstatisticasOfertas {
         CriteriaQuery<Tuple> q = cb.createTupleQuery();
         Root<OfertaCurso> oferta = q.from(OfertaCurso.class);
         Path<UUID> instituicaoId = oferta.get("instituicao").get("id");
-        q.multiselect(instituicaoId, cb.count(oferta))
-                .where(restricoes(cb, oferta, FiltroOfertas.vazio(), instituicaoId, instituicaoIds))
+        q.multiselect(instituicaoId, cb.countDistinct(oferta.get("curso").get("id")))                .where(restricoes(cb, oferta, FiltroOfertas.vazio(), instituicaoId, instituicaoIds))
                 .groupBy(instituicaoId);
 
         Map<UUID, Set<Modalidade>> modalidades = modalidades(FiltroOfertas.vazio(), "instituicao", instituicaoIds);
@@ -113,10 +112,11 @@ public class EstatisticasOfertas {
         CriteriaQuery<Tuple> q = cb.createTupleQuery();
         Root<OfertaCurso> oferta = q.from(OfertaCurso.class);
         Path<String> area = oferta.get("curso").get("area").get("nome");
-        q.multiselect(area, cb.count(oferta))
+        var cursos = cb.countDistinct(oferta.get("curso").get("id"));
+        q.multiselect(area, cursos)
                 .where(FiltroOfertas.visivel(oferta, cb), cb.equal(oferta.get("instituicao").get("id"), instituicaoId))
                 .groupBy(area)
-                .orderBy(cb.desc(cb.count(oferta)));
+                .orderBy(cb.desc(cursos));
 
         Map<String, Long> resultado = new LinkedHashMap<>();
         for (Tuple t : em.createQuery(q).getResultList()) {
