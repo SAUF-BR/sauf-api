@@ -7,3 +7,5 @@ spring:
 sauf:
   ingestao:
     api-key: chave-de-teste
+  stripe:
+    secret-key: ""
