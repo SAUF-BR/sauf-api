@@ -152,6 +152,7 @@ Implementação da [ADR-BE-016](https://github.com/SAUF-BR/sauf-docs/blob/main/A
 | D-69 | **`StatusAssinatura` espelha o Stripe**: `INCOMPLETA`, `ATIVA`, `PAST_DUE`, `CANCELAMENTO_AGENDADO` (= `active` com `cancel_at_period_end`), `CANCELADA`. As constantes antigas não mudam de nome nem de valor no JSON. | Segue a ADR-BE-016 sem quebrar o contrato que o front já usa. |
 | D-70 | **Idempotência dos webhooks pela tabela `stripe_event`**, com o **id do evento do Stripe (`evt_...`) como chave primária, em texto** (a ADR previa UUID, mas o id do Stripe não é UUID). Evento repetido não é reprocessado. | Evitar renovar ou cobrar duas vezes quando o Stripe reenviar um evento. |
 | D-71 | **Tabela `pagamento`** com uma linha por invoice do Stripe (`stripe_invoice_id` único, valor em centavos, status `PAGO`/`FALHOU`/`REEMBOLSADO`). | Histórico sem depender do Dashboard e base para a regra de reembolso em 7 dias (CDC art. 49). |
+| D-72 | **Mapeamento Plano <-> Price fica em `PlanosStripe`, só pela configuração** (`sauf.stripe.precos.*`), sem banco; o `enum Plano` não muda (a ADR previa o price no próprio enum). Price vazio ou repetido em mais de um plano conta como **não configurado** nos dois sentidos, e a API só registra um aviso ao subir. Price desconhecido não vira plano. | O enum continua sem depender de ambiente. Com price repetido (ex.: os valores do `.env.example`), não dá para saber qual plano foi comprado, e isso não pode liberar o plano errado. |
 
 ### Endereço da sede (26/10/2026)
 
