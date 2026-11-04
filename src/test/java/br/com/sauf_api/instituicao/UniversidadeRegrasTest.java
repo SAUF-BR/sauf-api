@@ -1,7 +1,7 @@
 package br.com.sauf_api.instituicao;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
+import br.com.sauf_api.curso.Curso;
 import br.com.sauf_api.oferta.Modalidade;
 import br.com.sauf_api.oferta.OfertaCurso;
 import java.util.List;
@@ -31,15 +31,15 @@ class UniversidadeRegrasTest {
 
     @Test
     void esferaDasPublicasNoFormatoDoScraper() {
-        assertThat(UniversidadeService.esfera("publica_federal")).isEqualTo("federal");
-        assertThat(UniversidadeService.esfera("publica_estadual")).isEqualTo("estadual");
-        assertThat(UniversidadeService.esfera("publica_municipal")).isEqualTo("municipal");
+        assertThat(UniversidadeService.esfera("publica_federal")).isEqualTo(Esfera.FEDERAL);
+        assertThat(UniversidadeService.esfera("publica_estadual")).isEqualTo(Esfera.ESTADUAL);
+        assertThat(UniversidadeService.esfera("publica_municipal")).isEqualTo(Esfera.MUNICIPAL);
     }
 
     @Test
     void esferaAceitaAcentoEspacoEMaiuscula() {
-        assertThat(UniversidadeService.esfera("Pública Estadual")).isEqualTo("estadual");
-        assertThat(UniversidadeService.esfera("PÚBLICA FEDERAL")).isEqualTo("federal");
+        assertThat(UniversidadeService.esfera("Pública Estadual")).isEqualTo(Esfera.ESTADUAL);
+        assertThat(UniversidadeService.esfera("PÚBLICA FEDERAL")).isEqualTo(Esfera.FEDERAL);
     }
 
     @Test
@@ -77,11 +77,13 @@ class UniversidadeRegrasTest {
 
     @Test
     void modalidadesSempreAsTresNaOrdemComTotais() {
+        Curso biomedicina = new Curso("Biomedicina", null);
+        Curso pedagogia = new Curso("Pedagogia", null);
         var resultado = UniversidadeService.modalidadesOfertadas(List.of(
-                modalidade(Modalidade.PRESENCIAL),
-                modalidade(Modalidade.PRESENCIAL),
-                modalidade(Modalidade.EAD),
-                modalidade(null)));
+                modalidade(Modalidade.PRESENCIAL, biomedicina),
+                modalidade(Modalidade.PRESENCIAL, pedagogia),
+                modalidade(Modalidade.EAD, pedagogia),
+                modalidade(null, biomedicina)));
 
         assertThat(resultado).extracting(UniversidadeDetalhe.ModalidadeOfertada::modalidade)
                 .containsExactly(Modalidade.PRESENCIAL, Modalidade.SEMIPRESENCIAL, Modalidade.EAD);
@@ -91,6 +93,16 @@ class UniversidadeRegrasTest {
                 .containsExactly(true, false, true);
         assertThat(resultado).extracting(UniversidadeDetalhe.ModalidadeOfertada::descricao)
                 .containsOnlyNulls();
+    }
+
+    @Test
+    void modalidadesContamCursosENaoOfertas() {
+        Curso biomedicina = new Curso("Biomedicina", null);
+        var resultado = UniversidadeService.modalidadesOfertadas(List.of(
+                modalidade(Modalidade.PRESENCIAL, biomedicina),
+                modalidade(Modalidade.PRESENCIAL, biomedicina)));
+
+        assertThat(resultado.get(0).totalCursos()).isEqualTo(1);
     }
 
     @Test
@@ -128,8 +140,8 @@ class UniversidadeRegrasTest {
         return o;
     }
 
-    private static OfertaCurso modalidade(Modalidade modalidade) {
-        OfertaCurso o = novaOferta();
+    private static OfertaCurso modalidade(Modalidade modalidade, Curso curso) {
+        OfertaCurso o = new OfertaCurso(curso, null, "chave", curso.getNome());
         o.setModalidade(modalidade);
         return o;
     }
