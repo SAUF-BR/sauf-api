@@ -61,7 +61,7 @@ class UniversidadeDetalheApiTest {
         mvc.perform(get("/api/v1/universidades/{id}", uem.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.esfera").value("estadual"))
-                .andExpect(jsonPath("$.totalCursos").value(3))
+                .andExpect(jsonPath("$.totalCursos").value(2))
                 .andExpect(jsonPath("$.vagasPorAno").value(100))
                 .andExpect(jsonPath("$.gratuita").value(true))
                 .andExpect(jsonPath("$.modalidades", hasSize(3)))
@@ -75,7 +75,23 @@ class UniversidadeDetalheApiTest {
                 .andExpect(jsonPath("$.modalidades[2].disponivel").value(false))
                 .andExpect(jsonPath("$.modalidades[2].totalCursos").value(0));
     }
+    @Test
+    void mesmoCursoEmDuasOfertasContaComoUmCurso() throws Exception {
+        Instituicao uem = instituicao(57, "UEM", TipoInstituicao.PUBLICA, "publica_estadual");
+        oferta(biomedicina, uem, "uem:biomedicina:integral", Modalidade.PRESENCIAL, 40, true, true);
+        oferta(biomedicina, uem, "uem:biomedicina:noturno", Modalidade.PRESENCIAL, 30, true, true);
 
+        mvc.perform(get("/api/v1/universidades/{id}", uem.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCursos").value(1))
+                .andExpect(jsonPath("$.vagasPorAno").value(70))
+                .andExpect(jsonPath("$.modalidades[0].totalCursos").value(1))
+                .andExpect(jsonPath("$.cursosPorArea", hasSize(1)))
+                .andExpect(jsonPath("$.cursosPorArea[0].totalCursos").value(1));
+
+        mvc.perform(get("/api/v1/universidades").param("busca", "UEM"))
+                .andExpect(jsonPath("$.content[0].totalCursos").value(1));
+    }
     @Test
     void camposSemFonteVemVaziosNoFormatoDoContrato() throws Exception {
         Instituicao uem = instituicao(57, "UEM", TipoInstituicao.PUBLICA, "publica_estadual");
