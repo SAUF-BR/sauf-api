@@ -624,6 +624,53 @@
           }
         },
         {
+          "name": "Questões / banco de questões (exemplo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "description": "ATENÇÃO: grava no banco configurado na API. Usa o caderno fictício 'EXEMPLO' para não sobrescrever as provas reais (LARANJA). Um lote por prova (banca + ano + edição + caderno); reenviar atualiza e troca as alternativas. Múltipla escolha: exatamente 1 correta (0 se anulada). Somatória: gabaritoSoma = soma dos valores das corretas. status: disponivel ou pendente_revisao (com motivoPendencia). Dados reais: uv run sauf-scraper questoes enem --ano 2022 2023 2024",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prova\": {\n    \"banca\": \"enem\",\n    \"ano\": 2024,\n    \"edicao\": \"D1\",\n    \"caderno\": \"EXEMPLO\",\n    \"urlOrigem\": \"https://huggingface.co/datasets/maritaca-ai/enem\",\n    \"credito\": \"ENEM 2024 (INEP), via maritaca-ai/enem (Apache-2.0)\"\n  },\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"lingua\": \"ingles\",\n      \"tipo\": \"multipla_escolha\",\n      \"area\": \"lc\",\n      \"habilidade\": 5,\n      \"dificuldade\": 0.81082,\n      \"codigoOrigem\": 118194,\n      \"textoBase\": \"## Texto de exemplo\\nTrecho do texto-base, compartilhado entre questões.\",\n      \"comando\": \"Nesse texto, o autor\",\n      \"anulada\": false,\n      \"status\": \"disponivel\",\n      \"credito\": \"ENEM 2024 (INEP), via maritaca-ai/enem (Apache-2.0)\",\n      \"alternativas\": [\n        {\n          \"rotulo\": \"A\",\n          \"texto\": \"alternativa A\",\n          \"correta\": true\n        },\n        {\n          \"rotulo\": \"B\",\n          \"texto\": \"alternativa B\",\n          \"correta\": false\n        },\n        {\n          \"rotulo\": \"C\",\n          \"texto\": \"alternativa C\",\n          \"correta\": false\n        },\n        {\n          \"rotulo\": \"D\",\n          \"texto\": \"alternativa D\",\n          \"correta\": false\n        },\n        {\n          \"rotulo\": \"E\",\n          \"texto\": \"alternativa E\",\n          \"correta\": false\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingestao/questoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingestao",
+                "questoes"
+              ]
+            }
+          }
+        },
+        {
           "name": "Erro: lote sem X-Api-Key (401)",
           "event": [
             {

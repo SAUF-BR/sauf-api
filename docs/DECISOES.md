@@ -167,6 +167,12 @@ Vêm da comparação entre as telas do protótipo e os dados que temos (`05-prot
 | D-66 | **`modalidades` do detalhe é uma lista de objetos** `{modalidade, disponivel, totalCursos, descricao}`, sempre com as 3, na ordem presencial, semipresencial e ead. `descricao` vem `null` (sem fonte). A listagem continua com a lista de textos. | O bloco "Modalidades ofertadas" mostra as 3, marcando as indisponíveis. |
 | D-67 | **Campos da visão geral sem fonte** ficam no contrato: `capaUrl`, `anoFundacao`, `notaFormasIngresso` e `proximoPrazo` vêm `null`; `sobre` e `formasIngresso` vêm `[]`. Fonte prevista: arquivo por IES da fase D (D-51) e P-12. A distância até o usuário **não entra** (D-51). | O front já desenha a tela completa e esconde o que vier vazio. |
 
+### Banco de questões (08/11/2026)
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-68 | **Ingestão de questões** em `POST /api/v1/ingestao/questoes` (mesma `X-Api-Key`). Um lote por prova, identificada por `banca` + `ano` + `edicao` + `caderno` (ENEM: um lote por dia, `D1`/`D2`, caderno `LARANJA`; ADR-SC-010). A questão é identificada por `numero` + `lingua` (as questões 1 a 5 do ENEM existem em inglês e em espanhol). Reenviar **atualiza** a questão e **troca todas as alternativas**; questão que não veio no lote **fica** (não é apagada). O texto-base é guardado uma vez por prova (hash SHA-256 do conteúdo) e é apagado quando nenhuma questão o usa mais. Validações, que **recusam só a questão** (vai para `rejeitados` como `questão N: motivo`, o resto do lote segue): rótulo repetido; múltipla escolha com **exatamente 1 correta** (0 se anulada); somatória com `valor` em todas as alternativas e `gabaritoSoma` igual à soma das corretas; número repetido no lote. Enum inválido ou campo obrigatório faltando: **400** no lote todo. **`status`**: `disponivel` (pode ir para simulado) ou `pendente_revisao` (com `motivoPendencia`, ex.: fórmula escrita por extenso, tabela com sobras da conversão, alternativa só com figura); as rotas de simulado vão sortear só as disponíveis. Figuras ficam como imagem Markdown no texto, com a URL original e a descrição como texto alternativo. Sem língua estrangeira, `lingua` é gravada como `''` (e volta `null`), porque `NULL` não conta no `UNIQUE` do Postgres. | Popular o banco de questões dos simulados (ENEM 2022 a 2024, 540 questões) sem perder questões boas por causa de uma ruim, e marcar as que precisam de revisão em vez de descartá-las. |
+
 ---
 
 ## 3. Estrutura da v1 (implementada)
@@ -205,6 +211,15 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
     - **`oferta_codigo_emec`**: (`oferta_id`, `codigo_emec`). Uso interno (D-35).
 - **`censo_curso`** (complemento, D-33): `codigo_emec` (PK), `instituicao_id`, `curso_id`, `nome`,
   `grau`, `modalidade`, `cidade`, `uf`, `vagas`, `gratuito`, `ano_censo`.
+- **Banco de questões** (D-68, `V2026_11_08_0945__banco_questoes.sql`):
+    - **`prova`**: `id`, `banca` (ENEM/UEM), `ano`, `edicao`, `caderno`, `url_origem`, `credito`,
+      `atualizada_em`. Única por (`banca`, `ano`, `edicao`, `caderno`).
+    - **`texto_base`**: `id`, `prova_id`, `conteudo`, `hash` (único por prova).
+    - **`questao`**: `id`, `prova_id`, `texto_base_id`, `numero`, `lingua`, `tipo`, `area`,
+      `materia`, `assunto`, `habilidade`, `comando`, `gabarito_soma`, `dificuldade` (parâmetro B
+      da TRI), `anulada`, `status`, `motivo_pendencia`, `codigo_origem` (CO_ITEM do INEP),
+      `credito`, `atualizada_em`. Única por (`prova_id`, `numero`, `lingua`).
+    - **`alternativa`**: (`questao_id`, `rotulo`) + `valor` (somatória), `texto`, `correta`.
 
 ### Rotas da v1
 
@@ -221,6 +236,7 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
 | `GET /api/v1/areas` | Áreas para os filtros, com contagem de cursos. |
 | `POST /api/v1/ingestao/censo` | Import do Censo (`sauf-scraper censo`). Cria/atualiza instituições pelo código e-MEC, cursos genéricos pelo rótulo Cine (D-31, D-36) e a tabela `censo_curso`. **Não cria ofertas** (D-33); depois do import, as ofertas do site já existentes são completadas de novo. Exige `X-Api-Key`. |
 | `POST /api/v1/ingestao/lotes` | Lote do scraper. Cria/atualiza uma oferta por página pela `chave` (D-34), com `opcoes` e `codigosEmec`, e completa com o Censo (D-35). Instituição não cadastrada: **422**. Exige `X-Api-Key`. |
+| `POST /api/v1/ingestao/questoes` | Lote de questões de uma prova (`sauf-scraper questoes enem --ano ...`). Upsert por prova e por número + língua; recusa só a questão inválida (D-68). Exige `X-Api-Key`. |
 | `GET /api/v1/assinatura/planos` | Planos da tela de assinatura, do mais barato ao mais caro (D-54). |
 | `GET /api/v1/assinatura` | Assinatura vigente do usuário: `{plano, status, renovaEm}`, ou **204** se não houver (D-56). |
 | `PUT /api/v1/assinatura` | Assina ou troca de plano. Corpo `{ "plano": "plus" }`. Plano inexistente: **400**; o mesmo plano já ativo: **409**. |
@@ -239,6 +255,7 @@ Censo (09/10/2026, pedido do Carlos). Como o banco ainda não tinha sido criado,
 de rascunho (V1 a V5) foram juntadas. A partir de agora, com o Supabase em uso, **toda mudança
 no banco vira uma migração nova** (`V2__...`), nunca uma edição da V1.
 Assinaturas: `V2026_10_21_2033__assinaturas.sql` (nome com data, D-52).
+Banco de questões: `V2026_11_08_0945__banco_questoes.sql` (D-68).
 
 Paginação: `page` (começa em 0), `size` (padrão 12, máximo 50) e `sort` (ex.: `sort=nome,asc`).
 Swagger: `/api/v1/swagger`.
