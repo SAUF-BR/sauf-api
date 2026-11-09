@@ -69,6 +69,10 @@ public class Assinatura {
         return !hoje.isAfter(renovaEm);
     }
 
+    public boolean abertaNoStripe() {
+        return stripeSubscriptionId != null && status != StatusAssinatura.CANCELADA;
+    }
+
     public void trocarPlano(Plano novo) {
         if (novo == plano && status == StatusAssinatura.ATIVA) {
             throw new AcaoNaoPermitidaException("Você já está no plano " + plano.getNome());

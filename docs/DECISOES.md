@@ -153,6 +153,7 @@ Implementação da [ADR-BE-016](https://github.com/SAUF-BR/sauf-docs/blob/main/A
 | D-70 | **Idempotência dos webhooks pela tabela `stripe_event`**, com o **id do evento do Stripe (`evt_...`) como chave primária, em texto** (a ADR previa UUID, mas o id do Stripe não é UUID). Evento repetido não é reprocessado. | Evitar renovar ou cobrar duas vezes quando o Stripe reenviar um evento. |
 | D-71 | **Tabela `pagamento`** com uma linha por invoice do Stripe (`stripe_invoice_id` único, valor em centavos, status `PAGO`/`FALHOU`/`REEMBOLSADO`). | Histórico sem depender do Dashboard e base para a regra de reembolso em 7 dias (CDC art. 49). |
 | D-72 | **Mapeamento Plano <-> Price fica em `PlanosStripe`, só pela configuração** (`sauf.stripe.precos.*`), sem banco; o `enum Plano` não muda (a ADR previa o price no próprio enum). Price vazio ou repetido em mais de um plano conta como **não configurado** nos dois sentidos, e a API só registra um aviso ao subir. Price desconhecido não vira plano. | O enum continua sem depender de ambiente. Com price repetido (ex.: os valores do `.env.example`), não dá para saber qual plano foi comprado, e isso não pode liberar o plano errado. |
+| D-73 | **Checkout não cria linha em `assinatura`.** `POST /assinatura/checkout` só abre a sessão do Stripe e guarda o `usuario_id` e o aceite do termo (versão `v1` e data/hora) nos metadados da subscription (`subscription_data`); a linha nasce quando o webhook confirmar a compra (D-75). Com assinatura aberta no Stripe (tem `stripe_subscription_id` e não está `CANCELADA`, mesmo com `renovaEm` vencido): **409**, a troca de plano é pelo portal. Quem já foi cliente reaproveita o `stripe_customer_id`. Pagamentos desabilitados ou plano sem price: **503**. Erro do Stripe: **502**, sem expor o detalhe. | `renova_em` é obrigatório e a última linha do usuário é a que vale: uma linha de checkout abandonado esconderia uma assinatura válida. O 409 evita cobrar duas vezes a mesma pessoa. |
 
 ### Endereço da sede (26/10/2026)
 
@@ -235,6 +236,7 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
 | `PUT /api/v1/assinatura` | Assina ou troca de plano. Corpo `{ "plano": "plus" }`. Plano inexistente: **400**; o mesmo plano já ativo: **409**. |
 | `POST /api/v1/assinatura/cancelar` | Agenda o cancelamento; o acesso continua até o `renovaEm`. Sem assinatura ou já agendado: **409**. |
 | `POST /api/v1/assinatura/reativar` | Desfaz o cancelamento agendado. Se não estiver agendado: **409**. |
+| `POST /api/v1/assinatura/checkout` | Abre o Checkout hospedado do Stripe. Corpo `{ "plano": "plus", "aceiteTermo": true }`, resposta `{ "url": "..." }`. Sem aceite ou plano inválido: **400**; assinatura aberta no Stripe: **409**; pagamentos indisponíveis: **503**; erro do Stripe: **502** (D-73). |
 
 Ingestão: o segredo vem de `SAUF_API_KEY` (mesmo valor nos dois projetos). Sem ele, as rotas
 de ingestão respondem 401. Resposta: `{criados, atualizados, inativados, rejeitados[]}`.
