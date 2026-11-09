@@ -13,11 +13,17 @@ public class IngestaoController {
     private final IngestaoService service;
     private final IngestaoIgcService igc;
     private final IngestaoSisuService sisu;
+    private final IngestaoQuestoesService questoes;
 
-    public IngestaoController(IngestaoService service, IngestaoIgcService igc, IngestaoSisuService sisu) {
+    public IngestaoController(
+            IngestaoService service,
+            IngestaoIgcService igc,
+            IngestaoSisuService sisu,
+            IngestaoQuestoesService questoes) {
         this.service = service;
         this.igc = igc;
         this.sisu = sisu;
+        this.questoes = questoes;
     }
 
     @PostMapping("/censo")
@@ -38,5 +44,10 @@ public class IngestaoController {
     @PostMapping("/sisu")
     public RespostaSisu sisu(@Valid @RequestBody LoteSisuRequest lote) {
         return sisu.importar(lote);
+    }
+
+    @PostMapping("/questoes")
+    public RespostaIngestao questoes(@Valid @RequestBody LoteQuestoesRequest lote) {
+        return questoes.importar(lote);
     }
 }
