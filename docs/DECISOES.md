@@ -142,6 +142,24 @@ Vêm da comparação entre as telas do protótipo e os dados que temos (`05-prot
 | D-56 | **Usuário sem assinatura: `GET /api/v1/assinatura` responde `204 No Content`.** | Diferencia "não tem assinatura" de erro, sem inventar um corpo vazio. |
 | D-57 | **A assinatura renova (+1 mês) só com pagamento confirmado.** Sem confirmação, ela vence no `renovaEm` (o acesso vai até esse dia, inclusive) e passa a contar como sem assinatura. | Ninguém fica com acesso sem ter pago. |
 
+### Pagamentos com Stripe (03/11/2026, TR-336)
+
+Implementação da [ADR-BE-016](https://github.com/SAUF-BR/sauf-docs/blob/main/ADRs/backend/ADR-BE-016.md) (aprovada no PR). Numeração a partir da D-69 porque o PR da TR-334 já usa a D-64 a D-67 e o banco de questões (TR-341) usa a D-68.
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-69 | **Stripe configurado por variável de ambiente** (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_BASIC/PLUS/PREMIUM`, URLs de retorno), lidas em `sauf.stripe.*` (`StripeProperties`). **Sem `STRIPE_SECRET_KEY`, os pagamentos ficam desabilitados** e o resto da API sobe normalmente (mesmo comportamento da ingestão sem `SAUF_API_KEY`). Só chaves de **modo teste** (`sk_test_...`) no time. | Ninguém precisa de conta Stripe para trabalhar nas outras telas; segredo fora do Git. |
+| D-70 | **`StatusAssinatura` espelha o Stripe**: `INCOMPLETA`, `ATIVA`, `PAST_DUE`, `CANCELAMENTO_AGENDADO` (= `active` com `cancel_at_period_end`), `CANCELADA`. As constantes antigas não mudam de nome nem de valor no JSON. | Segue a ADR-BE-016 sem quebrar o contrato que o front já usa. |
+| D-71 | **Idempotência dos webhooks pela tabela `stripe_event`**, com o **id do evento do Stripe (`evt_...`) como chave primária, em texto** (a ADR previa UUID, mas o id do Stripe não é UUID). Evento repetido não é reprocessado. | Evitar renovar ou cobrar duas vezes quando o Stripe reenviar um evento. |
+| D-72 | **Tabela `pagamento`** com uma linha por invoice do Stripe (`stripe_invoice_id` único, valor em centavos, status `PAGO`/`FALHOU`/`REEMBOLSADO`). | Histórico sem depender do Dashboard e base para a regra de reembolso em 7 dias (CDC art. 49). |
+| D-73 | **Mapeamento Plano <-> Price fica em `PlanosStripe`, só pela configuração** (`sauf.stripe.precos.*`), sem banco; o `enum Plano` não muda (a ADR previa o price no próprio enum). Price vazio ou repetido em mais de um plano conta como **não configurado** nos dois sentidos, e a API só registra um aviso ao subir. Price desconhecido não vira plano. | O enum continua sem depender de ambiente. Com price repetido (ex.: os valores do `.env.example`), não dá para saber qual plano foi comprado, e isso não pode liberar o plano errado. |
+| D-74 | **Checkout não cria linha em `assinatura`.** `POST /assinatura/checkout` só abre a sessão do Stripe e guarda o `usuario_id` e o aceite do termo (versão `v1` e data/hora) nos metadados da subscription (`subscription_data`); a linha nasce quando o webhook confirmar a compra (D-76). Com assinatura aberta no Stripe (tem `stripe_subscription_id` e não está `CANCELADA`, mesmo com `renovaEm` vencido): **409**, a troca de plano é pelo portal. Quem já foi cliente reaproveita o `stripe_customer_id`. Pagamentos desabilitados ou plano sem price: **503**. Erro do Stripe: **502**, sem expor o detalhe. | `renova_em` é obrigatório e a última linha do usuário é a que vale: uma linha de checkout abandonado esconderia uma assinatura válida. O 409 evita cobrar duas vezes a mesma pessoa. |
+| D-75 | **Registro em `stripe_event` e tratamento do evento na mesma transação** (`INSERT ... ON CONFLICT DO NOTHING`). Evento repetido: **200** sem tratar de novo. Falha no tratamento: **500** e o registro é desfeito, para o Stripe reenviar. Assinatura ausente, inválida ou antiga (tolerância de 5 minutos do SDK) ou corpo inválido: **400**. Sem `STRIPE_WEBHOOK_SECRET`: **503**, nenhum evento é aceito. A rota fica fora do `X-Api-Key`; o controle de acesso é a assinatura. | Se o registro fosse gravado antes do tratamento, uma falha faria o reenvio do Stripe ser ignorado e o evento se perderia. |
+| D-76 | **Cada evento usa só o id do objeto e busca o estado atual no Stripe** (`subscriptions.retrieve` etc.). A linha de `assinatura` nasce no primeiro evento que chegar, a partir do `usuario_id` nos metadados da subscription; sem esse metadado, a subscription é ignorada. `past_due`, `unpaid` e `paused` viram `PAST_DUE`; `incomplete` vira `INCOMPLETA`; `canceled` e `incomplete_expired` viram `CANCELADA`; `active` e `trialing` viram `ATIVA` ou `CANCELAMENTO_AGENDADO`. `CANCELADA` e `INCOMPLETA` não contam como vigentes. Uma linha em `pagamento` por invoice: `PAGO` não volta para `FALHOU` e `REEMBOLSADO` é definitivo; só reembolso total muda o status, e ele **não cancela** a assinatura. Duas assinaturas abertas para o mesmo usuário: registra erro no log, sem cancelar nem reembolsar. Erro ao consultar o Stripe: **502**; price sem plano: **500**; nos dois, o evento é desfeito para o Stripe reenviar. | Os eventos podem chegar fora de ordem e em outra versão da API, e a ADR diz que o Stripe é a fonte da verdade do pagamento. |
+| D-77 | **`PUT /api/v1/assinatura` não ativa nem altera assinatura** (fecha a parte de pagamento da P-14). Plano válido: sempre **409**, com a mensagem indicando o checkout ou, se houver assinatura aberta no Stripe, o portal. Plano inválido continua **400**. A rota foi mantida até o front migrar. | Coerente com a D-57: nenhum acesso sem pagamento confirmado. Um 409 com mensagem é mais útil para o front do que a rota sumir de repente. |
+| D-78 | **`POST /assinatura/portal` abre o Customer Portal para quem tem `stripe_customer_id`**, mesmo com a assinatura cancelada, para continuar vendo as faturas. Sem customer: **409**. As regras do portal (troca de plano com cobrança proporcional, downgrade no fim do ciclo, cancelamento no fim do período) ficam na **configuração do portal no Dashboard do Stripe**, não no código; sem ela salva no modo teste, o Stripe recusa e a rota responde **502**. | O portal é do Stripe (ADR-BE-016); o código só abre a sessão. |
+| D-79 | **`assinatura.cobre(recurso, hoje)` segue as regras de status da ADR-BE-016:** o plano precisa incluir o recurso e o status precisa liberar. `ATIVA` libera, sem olhar a data; `PAST_DUE` e `CANCELAMENTO_AGENDADO` liberam até o `renovaEm`, inclusive; `INCOMPLETA` e `CANCELADA` bloqueiam. A data entra como parâmetro, como em `vigente`. Nenhuma rota usa a função ainda. | Com o webhook como fonte da verdade, um atraso na renovação não corta o acesso de quem pagou. |
+
 ### Endereço da sede (26/10/2026)
 
 | Código | Decisão | Motivo |
@@ -211,6 +229,12 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
     - **`oferta_codigo_emec`**: (`oferta_id`, `codigo_emec`). Uso interno (D-35).
 - **`censo_curso`** (complemento, D-33): `codigo_emec` (PK), `instituicao_id`, `curso_id`, `nome`,
   `grau`, `modalidade`, `cidade`, `uf`, `vagas`, `gratuito`, `ano_censo`.
+- **`assinatura`**: `id`, `usuario_id`, `plano`, `status`, `renova_em`, `criada_em` e, desde a TR-336,
+  `stripe_customer_id`, `stripe_subscription_id` (único), `cancelar_no_fim_periodo`,
+  `aceite_termo_maior_idade`, `aceite_versao_termo`, `aceite_em`.
+- **`pagamento`** (D-72): `id`, `assinatura_id`, `stripe_invoice_id` (único), `valor_centavos`,
+  `status`, `pago_em`, `criado_em`.
+- **`stripe_event`** (D-71): `id` (id do evento no Stripe), `tipo`, `recebido_em`, `processado_em`.
 - **Banco de questões** (D-68, `V2026_11_08_0945__banco_questoes.sql`):
     - **`prova`**: `id`, `banca` (ENEM/UEM), `ano`, `edicao`, `caderno`, `url_origem`, `credito`,
       `atualizada_em`. Única por (`banca`, `ano`, `edicao`, `caderno`).
@@ -239,9 +263,12 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
 | `POST /api/v1/ingestao/questoes` | Lote de questões de uma prova (`sauf-scraper questoes enem --ano ...`). Upsert por prova e por número + língua; recusa só a questão inválida (D-68). Exige `X-Api-Key`. |
 | `GET /api/v1/assinatura/planos` | Planos da tela de assinatura, do mais barato ao mais caro (D-54). |
 | `GET /api/v1/assinatura` | Assinatura vigente do usuário: `{plano, status, renovaEm}`, ou **204** se não houver (D-56). |
-| `PUT /api/v1/assinatura` | Assina ou troca de plano. Corpo `{ "plano": "plus" }`. Plano inexistente: **400**; o mesmo plano já ativo: **409**. |
+| `PUT /api/v1/assinatura` | Não assina nem troca de plano (D-77). Corpo `{ "plano": "plus" }`. Plano inexistente: **400**; plano válido: **409**, indicando o checkout ou o portal. |
 | `POST /api/v1/assinatura/cancelar` | Agenda o cancelamento; o acesso continua até o `renovaEm`. Sem assinatura ou já agendado: **409**. |
 | `POST /api/v1/assinatura/reativar` | Desfaz o cancelamento agendado. Se não estiver agendado: **409**. |
+| `POST /api/v1/assinatura/checkout` | Abre o Checkout hospedado do Stripe. Corpo `{ "plano": "plus", "aceiteTermo": true }`, resposta `{ "url": "..." }`. Sem aceite ou plano inválido: **400**; assinatura aberta no Stripe: **409**; pagamentos indisponíveis: **503**; erro do Stripe: **502** (D-74). |
+| `POST /api/v1/webhooks/stripe` | Recebe os eventos do Stripe, com verificação da assinatura (`Stripe-Signature`) e idempotência pela tabela `stripe_event` (D-75). Não usa `X-Api-Key`. |
+| `POST /api/v1/assinatura/portal` | Abre o Customer Portal do Stripe. Sem corpo; resposta `{ "url": "..." }`. Sem customer no Stripe: **409**; pagamentos indisponíveis: **503**; erro do Stripe: **502** (D-78). |
 
 Ingestão: o segredo vem de `SAUF_API_KEY` (mesmo valor nos dois projetos). Sem ele, as rotas
 de ingestão respondem 401. Resposta: `{criados, atualizados, inativados, rejeitados[]}`.
@@ -275,7 +302,6 @@ aberta e pode mudar sem esforço grande.
 | P-25 | Duração convertida em semestres **no scraper** só quando o texto é simples ("5 anos" → 10, "3,5 anos" → 7); o texto original vai sempre em `duracaoTexto`. | `sauf-scraper`: `semestres_de_texto` |
 | P-11 | **Provisório** (09/10/2026): filtro **`notaCorteMax`** de `GET /api/v1/cursos` **removido** enquanto não houver fonte de nota de corte; volta quando houver. Se o front mandar o parâmetro, ele é ignorado e a lista vem sem esse filtro. Os campos de resposta sem fonte (`notaCorteSisu`, `notaCorteSisuMin`, `mensalidade`, `notaMec`, `imagemUrl`, `logoUrl`) continuam no contrato, vindo `null` (D-21), e estão descritos no Swagger com `@Schema` ("Ainda sem fonte de dados; vem null (P-11)"). | `CursoController.listar`, `FiltroOfertas`, DTOs de resposta |
 | P-26 | Oferta (página) ausente no lote seguinte fica **inativa** (não é apagada). | `IngestaoService.importarLote` |
-| P-14 | Sem gateway de pagamento, `PUT /api/v1/assinatura` age como pagamento confirmado: ativa a assinatura por 1 mês (ou troca o plano mantendo a data). Volta a depender do gateway quando ele existir (D-57). | `AssinaturaService.trocarPlano` |
 | D-55 | Até o login existir, todas as requisições usam um **usuário provisório** fixo e `assinatura.usuario_id` fica sem chave estrangeira. Com o login, muda só a classe `UsuarioLogado` e uma migração nova cria a chave estrangeira. | `comum/UsuarioLogado.java` |
 
 ## 5. Pontos pendentes
@@ -312,7 +338,7 @@ aberta e pode mudar sem esforço grande.
 | P-11 | **Fontes de dados ainda inexistentes**: mensalidade, imagens dos cursos, logos das universidades. Nota MEC resolvida pela D-49 e notas de corte pela D-50/D-53. | Na v1 vêm `null` (D-21). |
 | P-12 | **Formas de ingresso e próximos prazos/editais** por universidade. | `FormaIngresso` não tem relação no DER. |
 | ~~P-13~~ | **"Na sua região"**: localização do usuário ou filtro de UF/cidade? | Resolvido: D-42 (UF do perfil). |
-| P-14 | **Assinaturas e simulados**: planos, gateway de pagamento, conteúdo dos simulados. | Ainda em definição pelo time. |
+| P-14 | **Conteúdo dos simulados.** | Planos: D-54. Gateway de pagamento: Stripe (ADR-BE-016, D-69 a D-77). Falta só o conteúdo dos simulados. |
 | P-15 | **Deploy** da API e **agendamento** do scraper. | Onde rodam e com que frequência. |
 | P-16 | **Ambientes**: um projeto Supabase ou dev e produção separados. | — |
 | P-17 | **Histórico** de alterações de ofertas. | Sugestão para a v1: só o valor atual e a data da última coleta. |
@@ -338,3 +364,4 @@ Itens que mudam algo no `sauf-web-front` quando a API real substituir os mocks:
 6. Áreas passam a ser as do Censo (D-18), por exemplo "Saúde e bem-estar" em vez de "Saúde".
 7. O detalhe da universidade ganha `enderecoSede` (D-58), exibido com o rótulo "Sede"; CEP só com dígitos (o front aplica a máscara). Em cursos/ofertas de campus fora da sede, mostrar só a cidade/UF da oferta, nunca o endereço da sede (nem como "Sede"); o endereço só aparece numa oferta quando a cidade/UF dela for igual à da sede. Campos `null` aparecem como "Sem informação".
 8. O detalhe da universidade ganha `esfera` (D-64), `vagasPorAno` e `gratuita` (D-65), e `modalidades` passa a ser uma lista de objetos `{modalidade, disponivel, totalCursos, descricao}` (D-66). O mock do front usa `endereco`, e a API manda `enderecoSede` (D-58). Sem `distanciaKm` (D-51).
+9. Assinar passa a ser `POST /assinatura/checkout` com `{plano, aceiteTermo}`, redirecionando para a `url` devolvida (D-74). O `PUT /assinatura` não assina mais e responde **409** (D-77). Depois do pagamento, a assinatura só aparece quando o webhook chegar, então o `GET /assinatura` pode responder **204** por alguns instantes ao voltar do Stripe. O status ganha os valores `past-due`, `incompleta` e `cancelada` (D-70).

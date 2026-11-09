@@ -32,17 +32,15 @@ public class AssinaturaService {
         return vigente(usuarioId).map(AssinaturaResposta::de);
     }
 
-    // Provisório (P-14): sem gateway, assinar ou trocar conta como pagamento confirmado.
-    @Transactional
-    public AssinaturaResposta trocarPlano(UUID usuarioId, Plano plano) {
-        Optional<Assinatura> existente = vigente(usuarioId);
-        if (existente.isEmpty()) {
-            Assinatura nova = new Assinatura(usuarioId, plano, hoje().plusMonths(1));
-            return AssinaturaResposta.de(assinaturas.save(nova));
-        }
-        Assinatura assinatura = existente.get();
-        assinatura.trocarPlano(plano);
-        return AssinaturaResposta.de(assinatura);
+    // D-77: assinar e trocar de plano só com pagamento confirmado pelo Stripe.
+    @Transactional(readOnly = true)
+    public void recusarTrocaDePlano(UUID usuarioId) {
+        boolean aberta = assinaturas.findFirstByUsuarioIdOrderByCriadaEmDesc(usuarioId)
+                .filter(Assinatura::abertaNoStripe)
+                .isPresent();
+        throw new AcaoNaoPermitidaException(aberta
+                ? "Para trocar de plano, use o portal da assinatura"
+                : "Para assinar, use o checkout");
     }
 
     @Transactional

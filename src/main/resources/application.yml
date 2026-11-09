@@ -26,6 +26,16 @@ sauf:
     origens-permitidas: ${SAUF_CORS_ORIGENS:http://localhost:5173}
   ingestao:
     api-key: ${SAUF_API_KEY:}
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    precos:
+      basic: ${STRIPE_PRICE_BASIC:}
+      plus: ${STRIPE_PRICE_PLUS:}
+      premium: ${STRIPE_PRICE_PREMIUM:}
+    url-sucesso: ${STRIPE_URL_SUCESSO:http://localhost:5173/perfil/assinatura?checkout=sucesso}
+    url-cancelamento: ${STRIPE_URL_CANCELAMENTO:http://localhost:5173/perfil/assinatura?checkout=cancelado}
+    url-retorno-portal: ${STRIPE_URL_RETORNO_PORTAL:http://localhost:5173/perfil/assinatura}
 
 springdoc:
   api-docs:

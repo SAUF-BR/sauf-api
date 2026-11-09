@@ -1,6 +1,9 @@
 package br.com.sauf_api.comum;
 
 import br.com.sauf_api.ingestao.InstituicaoNaoCadastradaException;
+import br.com.sauf_api.pagamento.FalhaNoGatewayException;
+import br.com.sauf_api.pagamento.PagamentoIndisponivelException;
+import br.com.sauf_api.pagamento.WebhookInvalidoException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -34,6 +37,21 @@ public class TratadorDeErros {
     @ExceptionHandler(AcaoNaoPermitidaException.class)
     ResponseEntity<ErroResposta> acaoNaoPermitida(AcaoNaoPermitidaException e) {
         return responder(HttpStatus.CONFLICT, e.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(PagamentoIndisponivelException.class)
+    ResponseEntity<ErroResposta> pagamentoIndisponivel(PagamentoIndisponivelException e) {
+        return responder(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(FalhaNoGatewayException.class)
+    ResponseEntity<ErroResposta> falhaNoGateway(FalhaNoGatewayException e) {
+        return responder(HttpStatus.BAD_GATEWAY, e.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(WebhookInvalidoException.class)
+    ResponseEntity<ErroResposta> webhookInvalido(WebhookInvalidoException e) {
+        return responder(HttpStatus.BAD_REQUEST, e.getMessage(), Map.of());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
