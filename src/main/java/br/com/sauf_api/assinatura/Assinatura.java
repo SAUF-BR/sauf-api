@@ -94,14 +94,6 @@ public class Assinatura {
         this.aceiteEm = aceiteEm;
     }
 
-    public void trocarPlano(Plano novo) {
-        if (novo == plano && status == StatusAssinatura.ATIVA) {
-            throw new AcaoNaoPermitidaException("Você já está no plano " + plano.getNome());
-        }
-        this.plano = novo;
-        this.status = StatusAssinatura.ATIVA;
-    }
-
     public void cancelar() {
         if (status != StatusAssinatura.ATIVA) {
             throw new AcaoNaoPermitidaException("O cancelamento já está agendado");

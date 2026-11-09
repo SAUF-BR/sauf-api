@@ -36,8 +36,8 @@ public class AssinaturaController {
     }
 
     @PutMapping
-    public AssinaturaResposta trocarPlano(@Valid @RequestBody TrocarPlanoRequest request) {
-        return service.trocarPlano(usuarioLogado.id(), request.plano());
+    public void trocarPlano(@Valid @RequestBody TrocarPlanoRequest request) {
+        service.recusarTrocaDePlano(usuarioLogado.id());
     }
 
     @PostMapping("/cancelar")
