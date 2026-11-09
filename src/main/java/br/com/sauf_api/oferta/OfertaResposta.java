@@ -43,12 +43,24 @@ public record OfertaResposta(
 
     public record OpcaoResposta(Grau grau, String turno) {}
 
-    /** Página de ofertas com o menor corte do Sisu de cada uma, numa consulta só. */
-    public static Pagina<OfertaResposta> pagina(Page<OfertaCurso> pagina, NotasSisu sisu) {
-        Map<UUID, Set<Integer>> codigos = pagina.getContent().stream()
+    /** Ofertas com o menor corte do Sisu de cada uma, numa consulta só. */
+    public static List<OfertaResposta> lista(List<OfertaCurso> ofertas, NotasSisu sisu) {
+        Map<UUID, Set<Integer>> codigos = ofertas.stream()
                 .collect(Collectors.toMap(OfertaCurso::getId, OfertaCurso::getCodigosEmec));
         Map<UUID, NotasSisu.Corte> cortes = sisu.menorCorte(codigos);
-        return Pagina.de(pagina, o -> de(o, cortes.get(o.getId())));
+        return ofertas.stream()
+                .map(o -> de(o, cortes.get(o.getId())))
+                .toList();
+    }
+
+    /** Página de ofertas: a mesma lista(), com os dados da paginação. */
+    public static Pagina<OfertaResposta> pagina(Page<OfertaCurso> pagina, NotasSisu sisu) {
+        return new Pagina<>(
+                lista(pagina.getContent(), sisu),
+                pagina.getNumber(),
+                pagina.getSize(),
+                pagina.getTotalElements(),
+                pagina.getTotalPages());
     }
 
     public static OfertaResposta de(OfertaCurso oferta, NotasSisu.Corte corte) {

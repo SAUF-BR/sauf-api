@@ -50,7 +50,7 @@ class FavoritoCursoServiceTest {
         service.favoritar(USUARIO, OFERTA);
 
         ArgumentCaptor<FavoritoCurso> salvo = ArgumentCaptor.forClass(FavoritoCurso.class);
-        verify(favoritos).save(salvo.capture());
+        verify(favoritos).saveAndFlush(salvo.capture());
         assertThat(salvo.getValue().getUsuarioId()).isEqualTo(USUARIO);
         assertThat(salvo.getValue().getOferta()).isSameAs(biomedicina);
         assertThat(salvo.getValue().getCriadoEm()).isNotNull();
@@ -58,12 +58,13 @@ class FavoritoCursoServiceTest {
 
     @Test
     void favoritarDeNovoNaoSalvaOutraVez() {
-        when(ofertas.findById(OFERTA)).thenReturn(Optional.of(biomedicinaUem()));
+        OfertaCurso biomedicina = biomedicinaUem();
+        when(ofertas.findById(OFERTA)).thenReturn(Optional.of(biomedicina));
         when(favoritos.existsByUsuarioIdAndOfertaId(USUARIO, OFERTA)).thenReturn(true);
 
         service.favoritar(USUARIO, OFERTA);
 
-        verify(favoritos, never()).save(any());
+        verify(favoritos, never()).saveAndFlush(any());
     }
 
     @Test
@@ -72,7 +73,7 @@ class FavoritoCursoServiceTest {
 
         assertThatThrownBy(() -> service.favoritar(USUARIO, OFERTA))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
-        verify(favoritos, never()).save(any());
+        verify(favoritos, never()).saveAndFlush(any());
     }
 
     @Test
@@ -83,7 +84,7 @@ class FavoritoCursoServiceTest {
 
         assertThatThrownBy(() -> service.favoritar(USUARIO, OFERTA))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
-        verify(favoritos, never()).save(any());
+        verify(favoritos, never()).saveAndFlush(any());
     }
 
     @Test
@@ -94,7 +95,7 @@ class FavoritoCursoServiceTest {
 
         assertThatThrownBy(() -> service.favoritar(USUARIO, OFERTA))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
-        verify(favoritos, never()).save(any());
+        verify(favoritos, never()).saveAndFlush(any());
     }
 
     @Test
