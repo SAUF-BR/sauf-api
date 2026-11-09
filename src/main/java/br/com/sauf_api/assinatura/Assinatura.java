@@ -71,6 +71,19 @@ public class Assinatura {
                 && !hoje.isAfter(renovaEm);
     }
 
+    // D-78: regras de status da ADR-BE-016. Durante as retries (PAST_DUE) o acesso continua até o renovaEm.
+    public boolean cobre(RecursoPlano recurso, LocalDate hoje) {
+        return plano.getRecursos().contains(recurso) && statusLiberaAcesso(hoje);
+    }
+
+    private boolean statusLiberaAcesso(LocalDate hoje) {
+        return switch (status) {
+            case ATIVA -> true;
+            case PAST_DUE, CANCELAMENTO_AGENDADO -> !hoje.isAfter(renovaEm);
+            case INCOMPLETA, CANCELADA -> false;
+        };
+    }
+
     public boolean abertaNoStripe() {
         return stripeSubscriptionId != null && status != StatusAssinatura.CANCELADA;
     }
