@@ -51,6 +51,18 @@ public class Pagamento {
         this.criadoEm = Instant.now();
     }
 
+    public void marcarPago(int valorCentavos, Instant pagoEm) {
+        if (status != StatusPagamento.REEMBOLSADO) {
+            this.status = StatusPagamento.PAGO;
+            this.valorCentavos = valorCentavos;
+            this.pagoEm = pagoEm;
+        }
+    }
+
+    public void marcarReembolsado() {
+        this.status = StatusPagamento.REEMBOLSADO;
+    }
+
     public UUID getId() {
         return id;
     }

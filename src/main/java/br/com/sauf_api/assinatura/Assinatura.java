@@ -66,11 +66,32 @@ public class Assinatura {
 
     // D-57: sem pagamento confirmado, o acesso vai até o dia do renovaEm, inclusive.
     public boolean vigente(LocalDate hoje) {
-        return !hoje.isAfter(renovaEm);
+        return status != StatusAssinatura.CANCELADA
+                && status != StatusAssinatura.INCOMPLETA
+                && !hoje.isAfter(renovaEm);
     }
 
     public boolean abertaNoStripe() {
         return stripeSubscriptionId != null && status != StatusAssinatura.CANCELADA;
+    }
+
+    public void vincularAoStripe(String stripeSubscriptionId) {
+        this.stripeSubscriptionId = stripeSubscriptionId;
+    }
+
+    public void sincronizarComStripe(
+            Plano plano, StatusAssinatura status, LocalDate renovaEm, boolean cancelarNoFimPeriodo, String stripeCustomerId) {
+        this.plano = plano;
+        this.status = status;
+        this.renovaEm = renovaEm;
+        this.cancelarNoFimPeriodo = cancelarNoFimPeriodo;
+        this.stripeCustomerId = stripeCustomerId;
+    }
+
+    public void registrarAceite(boolean aceite, String versaoTermo, Instant aceiteEm) {
+        this.aceiteTermoMaiorIdade = aceite;
+        this.aceiteVersaoTermo = versaoTermo;
+        this.aceiteEm = aceiteEm;
     }
 
     public void trocarPlano(Plano novo) {
