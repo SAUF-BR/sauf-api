@@ -49,7 +49,7 @@ class FavoritoUniversidadeServiceTest {
         service.favoritar(USUARIO, UNIVERSIDADE);
 
         ArgumentCaptor<FavoritoUniversidade> salvo = ArgumentCaptor.forClass(FavoritoUniversidade.class);
-        verify(favoritos).save(salvo.capture());
+        verify(favoritos).saveAndFlush(salvo.capture());
         assertThat(salvo.getValue().getUsuarioId()).isEqualTo(USUARIO);
         assertThat(salvo.getValue().getInstituicao()).isSameAs(uem);
         assertThat(salvo.getValue().getCriadoEm()).isNotNull();
@@ -57,12 +57,13 @@ class FavoritoUniversidadeServiceTest {
 
     @Test
     void favoritarDeNovoNaoSalvaOutraVez() {
-        when(instituicoes.findByIdAndAtivaTrue(UNIVERSIDADE)).thenReturn(Optional.of(uem()));
+        Instituicao uem = uem();
+        when(instituicoes.findByIdAndAtivaTrue(UNIVERSIDADE)).thenReturn(Optional.of(uem));
         when(favoritos.existsByUsuarioIdAndInstituicaoId(USUARIO, UNIVERSIDADE)).thenReturn(true);
 
         service.favoritar(USUARIO, UNIVERSIDADE);
 
-        verify(favoritos, never()).save(any());
+        verify(favoritos, never()).saveAndFlush(any());
     }
 
     @Test
@@ -71,7 +72,7 @@ class FavoritoUniversidadeServiceTest {
 
         assertThatThrownBy(() -> service.favoritar(USUARIO, UNIVERSIDADE))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
-        verify(favoritos, never()).save(any());
+        verify(favoritos, never()).saveAndFlush(any());
     }
 
     @Test
@@ -108,8 +109,9 @@ class FavoritoUniversidadeServiceTest {
     @Test
     void listarUsaOTotalDeCampiDaConsulta() {
         UUID idUem = UUID.randomUUID();
+        Instituicao uem = comId(idUem);
         when(favoritos.findByUsuarioIdAndInstituicaoAtivaTrueOrderByCriadoEmDesc(USUARIO))
-                .thenReturn(List.of(new FavoritoUniversidade(USUARIO, comId(idUem))));
+                .thenReturn(List.of(new FavoritoUniversidade(USUARIO, uem)));
         when(estatisticas.porInstituicao(any())).thenReturn(new HashMap<>());
         when(favoritos.campiPorInstituicao(any()))
                 .thenReturn(List.<Object[]>of(new Object[] {idUem, 3L}));
@@ -121,10 +123,12 @@ class FavoritoUniversidadeServiceTest {
     void idsVemNaMesmaOrdemDosFavoritos() {
         UUID idUel = UUID.randomUUID();
         UUID idUem = UUID.randomUUID();
+        Instituicao uel = comId(idUel);
+        Instituicao uem = comId(idUem);
         when(favoritos.findByUsuarioIdAndInstituicaoAtivaTrueOrderByCriadoEmDesc(USUARIO))
                 .thenReturn(List.of(
-                        new FavoritoUniversidade(USUARIO, comId(idUel)),
-                        new FavoritoUniversidade(USUARIO, comId(idUem))));
+                        new FavoritoUniversidade(USUARIO, uel),
+                        new FavoritoUniversidade(USUARIO, uem)));
 
         assertThat(service.ids(USUARIO)).containsExactly(idUel, idUem);
     }
