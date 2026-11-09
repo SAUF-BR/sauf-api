@@ -71,7 +71,7 @@ public class Assinatura {
                 && !hoje.isAfter(renovaEm);
     }
 
-    // D-78: regras de status da ADR-BE-016. Durante as retries (PAST_DUE) o acesso continua até o renovaEm.
+    // D-79: regras de status da ADR-BE-016. Durante as retries (PAST_DUE) o acesso continua até o renovaEm.
     public boolean cobre(RecursoPlano recurso, LocalDate hoje) {
         return plano.getRecursos().contains(recurso) && statusLiberaAcesso(hoje);
     }

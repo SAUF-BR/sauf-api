@@ -38,7 +38,7 @@ public class CheckoutService {
         this.assinaturas = assinaturas;
     }
 
-    /** Devolve a URL do Checkout hospedado. A assinatura só é criada quando o webhook confirmar (D-73). */
+    /** Devolve a URL do Checkout hospedado. A assinatura só é criada quando o webhook confirmar (D-74). */
     public String criarSessao(UUID usuarioId, Plano plano) {
         StripeClient cliente = stripe.getIfAvailable();
         if (cliente == null) {

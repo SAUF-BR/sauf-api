@@ -27,7 +27,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Do evento só se usa o id do objeto: o estado vem sempre do Stripe (D-75). Assim, a ordem de
+ * Do evento só se usa o id do objeto: o estado vem sempre do Stripe (D-76). Assim, a ordem de
  * chegada dos eventos e a versão da API do webhook não mudam o resultado.
  */
 @Component

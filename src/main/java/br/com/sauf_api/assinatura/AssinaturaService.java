@@ -32,7 +32,7 @@ public class AssinaturaService {
         return vigente(usuarioId).map(AssinaturaResposta::de);
     }
 
-    // D-76: assinar e trocar de plano só com pagamento confirmado pelo Stripe.
+    // D-77: assinar e trocar de plano só com pagamento confirmado pelo Stripe.
     @Transactional(readOnly = true)
     public void recusarTrocaDePlano(UUID usuarioId) {
         boolean aberta = assinaturas.findFirstByUsuarioIdOrderByCriadaEmDesc(usuarioId)

@@ -47,7 +47,7 @@ public class StripeWebhookService {
     }
 
     /**
-     * Registro e tratamento na mesma transação (D-74): se o tratamento falhar, o registro é
+     * Registro e tratamento na mesma transação (D-75): se o tratamento falhar, o registro é
      * desfeito e o Stripe pode reenviar. Evento repetido não é tratado de novo.
      */
     @Transactional

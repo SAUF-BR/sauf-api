@@ -75,7 +75,7 @@ Pré-requisitos, como conferir e erros comuns: seção "Como popular a API" do R
 
 ## Pagamentos com Stripe (modo teste)
 
-O fluxo usa Checkout hospedado, Customer Portal e webhooks (ADR-BE-016, D-68 a D-78). A assinatura
+O fluxo usa Checkout hospedado, Customer Portal e webhooks (ADR-BE-016, D-69 a D-79). A assinatura
 só nasce e muda de status quando o webhook chega. Sem `STRIPE_SECRET_KEY`, os pagamentos ficam
 desabilitados e o resto da API funciona normalmente.
 
@@ -153,7 +153,7 @@ assinatura anterior; enquanto ela estiver aberta, o checkout responde **409**.
 | `/checkout` ou `/portal` responde **503** | Falta a chave ou o preço do plano | Confira o `.env` e reinicie a API |
 | `/portal` responde **502** | Configuração do portal não salva em modo teste | Faça o item 2 da preparação |
 | Pagou, mas o `GET /assinatura` responde **204** | O webhook não chegou | Confira se o `stripe listen` está aberto |
-| `stripe trigger` responde **200**, mas nada muda | O evento de exemplo não traz `usuario_id` e é ignorado (D-75) | Teste pelo checkout de verdade |
+| `stripe trigger` responde **200**, mas nada muda | O evento de exemplo não traz `usuario_id` e é ignorado (D-76) | Teste pelo checkout de verdade |
 
 ## Testes
 

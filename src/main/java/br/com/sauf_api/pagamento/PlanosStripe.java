@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Mapeamento Plano <-> Price do Stripe, vindo só da configuração (D-72).
+ * Mapeamento Plano <-> Price do Stripe, vindo só da configuração (D-73).
  * Price vazio ou repetido em mais de um plano conta como não configurado: com o mesmo price,
  * não dá para saber qual plano foi comprado.
  */
