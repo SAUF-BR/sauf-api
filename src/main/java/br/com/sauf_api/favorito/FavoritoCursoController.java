@@ -4,6 +4,7 @@ import br.com.sauf_api.comum.UsuarioLogado;
 import br.com.sauf_api.oferta.OfertaResposta;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,7 +39,11 @@ public class FavoritoCursoController {
     @PostMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void favoritar(@PathVariable UUID id) {
-        service.favoritar(usuarioLogado.id(), id);
+        try {
+            service.favoritar(usuarioLogado.id(), id);
+        } catch (DataIntegrityViolationException e) {
+            // Clique duplo: a outra requisição já salvou (UNIQUE). Conta como já favoritado.
+        }
     }
 
     @DeleteMapping("/{id}")
