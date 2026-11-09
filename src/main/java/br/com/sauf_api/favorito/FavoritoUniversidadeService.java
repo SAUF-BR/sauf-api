@@ -56,7 +56,7 @@ public class FavoritoUniversidadeService {
         Instituicao instituicao = instituicoes.findByIdAndAtivaTrue(instituicaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Universidade", instituicaoId));
         if (!favoritos.existsByUsuarioIdAndInstituicaoId(usuarioId, instituicaoId)) {
-            favoritos.save(new FavoritoUniversidade(usuarioId, instituicao));
+            favoritos.saveAndFlush(new FavoritoUniversidade(usuarioId, instituicao));
         }
     }
 
