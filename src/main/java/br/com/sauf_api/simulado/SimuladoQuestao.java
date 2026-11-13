@@ -43,6 +43,10 @@ public class SimuladoQuestao {
     @Column(name = "tempo_segundos", nullable = false)
     private int tempoSegundos;
 
+    // Respondida com o tempo do simulado cronometrado já esgotado; continua marcada se a resposta mudar.
+    @Column(name = "fora_do_tempo", nullable = false)
+    private boolean foraDoTempo;
+
     // Só muda quando o aluno mexe na questão; a conversão de pendente na finalização não conta.
     @Column(name = "atualizada_em")
     private Instant atualizadaEm;
@@ -56,22 +60,30 @@ public class SimuladoQuestao {
         this.situacao = SituacaoQuestao.PENDENTE;
     }
 
-    void registrar(SituacaoQuestao situacao, String alternativa, int tempoSegundos, Instant agora) {
+    void registrar(
+            SituacaoQuestao situacao, String alternativa, int tempoSegundos, boolean foraDoTempo, Instant agora) {
         this.situacao = situacao;
         this.alternativaMarcada = situacao == SituacaoQuestao.RESPONDIDA ? alternativa : null;
         this.tempoSegundos = tempoSegundos;
+        this.foraDoTempo = this.foraDoTempo || foraDoTempo;
         this.atualizadaEm = agora;
     }
 
-    void esgotar(int limiteSegundos, Instant agora) {
-        registrar(SituacaoQuestao.TEMPO_ESGOTADO, null, limiteSegundos, agora);
-    }
-
-    void encerrar() {
+    void encerrar(boolean foraDoTempoContaNaNota) {
         if (situacao == SituacaoQuestao.PENDENTE) {
             situacao = SituacaoQuestao.EM_BRANCO;
         }
-        correta = situacao == SituacaoQuestao.RESPONDIDA && alternativaMarcada.equals(rotuloCorreto());
+        boolean vale = foraDoTempoContaNaNota || !respondidaForaDoTempo();
+        correta = situacao == SituacaoQuestao.RESPONDIDA && vale && alternativaMarcada.equals(rotuloCorreto());
+    }
+
+    public boolean respondidaForaDoTempo() {
+        return foraDoTempo && situacao == SituacaoQuestao.RESPONDIDA;
+    }
+
+    /** Ficou o limite inteiro (ou mais) na questão de um simulado cronometrado, respondida ou não. */
+    public boolean tempoEsgotado() {
+        return simulado.isCronometrado() && tempoSegundos >= simulado.getSegundosPorQuestao();
     }
 
     public String rotuloCorreto() {
@@ -119,6 +131,10 @@ public class SimuladoQuestao {
 
     public int getTempoSegundos() {
         return tempoSegundos;
+    }
+
+    public boolean isForaDoTempo() {
+        return foraDoTempo;
     }
 
     public Instant getAtualizadaEm() {

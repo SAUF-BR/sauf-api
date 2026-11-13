@@ -10,4 +10,5 @@ public record CriarSimuladoRequest(
         @NotNull(message = "Escolha a banca") Banca banca,
         @NotNull(message = "Escolha o tamanho do simulado") TamanhoSimulado tamanho,
         @NotEmpty(message = "Escolha ao menos uma área") List<@NotNull(message = "Área inválida") AreaQuestao> areas,
-        @NotNull(message = "Informe se o simulado é cronometrado") Boolean cronometrado) {}
+        @NotNull(message = "Informe se o simulado é cronometrado") Boolean cronometrado,
+        Integer segundosPorQuestao) {}

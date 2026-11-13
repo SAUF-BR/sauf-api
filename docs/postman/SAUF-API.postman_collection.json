@@ -781,7 +781,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"banca\": \"enem\",\n  \"tamanho\": \"rapida\",\n  \"areas\": [\n    \"lc\",\n    \"ch\",\n    \"cn\",\n    \"mt\"\n  ],\n  \"cronometrado\": true\n}",
+              "raw": "{\n  \"banca\": \"enem\",\n  \"tamanho\": \"rapida\",\n  \"areas\": [\n    \"lc\",\n    \"ch\",\n    \"cn\",\n    \"mt\"\n  ],\n  \"cronometrado\": true,\n  \"segundosPorQuestao\": 150\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -840,7 +840,7 @@
                 "value": "application/json"
               }
             ],
-            "description": "tempoSegundos é o total acumulado na questão (a API guarda o maior). Cronometrado com 150 s ou mais vira tempo_esgotado. 409 se a questão esgotou ou o simulado foi finalizado.",
+            "description": "tempoSegundos é o total acumulado na questão (a API guarda o maior). No cronometrado, resposta nova com o tempo maior ou igual ao limite volta com foraDoTempo true. 409 se o simulado foi finalizado.",
             "url": {
               "raw": "{{baseUrl}}/simulados/{{simuladoId}}/questoes/1",
               "host": [

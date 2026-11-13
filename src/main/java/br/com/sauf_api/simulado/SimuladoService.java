@@ -31,7 +31,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SimuladoService {
 
-    public static final int SEGUNDOS_POR_QUESTAO = 150;
+    public static final int SEGUNDOS_POR_QUESTAO_PADRAO = 150;
+    public static final List<Integer> TEMPOS_POR_QUESTAO = List.of(90, 120, 150, 180, 240);
+    static final int SEGUNDOS_POR_QUESTAO_MINIMO = 60;
+    static final int SEGUNDOS_POR_QUESTAO_MAXIMO = 600;
+    static final int SEGUNDOS_POR_QUESTAO_PASSO = 30;
+
+    // Regra da nota (D-86): resposta fora do tempo conta normal; com false, ela vira erro na correção.
+    static final boolean FORA_DO_TEMPO_CONTA_NA_NOTA = true;
 
     private final SimuladoRepository simulados;
     private final SimuladoQuestaoRepository itens;
@@ -52,7 +59,8 @@ public class SimuladoService {
                 Arrays.stream(TamanhoSimulado.values())
                         .map(t -> new OpcoesSimulado.TamanhoOpcao(t, t.questoes()))
                         .toList(),
-                SEGUNDOS_POR_QUESTAO,
+                SEGUNDOS_POR_QUESTAO_PADRAO,
+                TEMPOS_POR_QUESTAO,
                 List.of(new OpcoesSimulado.BancaOpcao(Banca.ENEM, "ENEM")),
                 Arrays.stream(AreaQuestao.values())
                         .map(a -> new OpcoesSimulado.AreaOpcao(
@@ -65,17 +73,18 @@ public class SimuladoService {
         if (request.banca() != Banca.ENEM) {
             throw new DadosInvalidosException("banca", "Por enquanto só o ENEM está disponível");
         }
+        boolean cronometrado = request.cronometrado();
+        Integer segundosPorQuestao = cronometrado ? validarTempo(request.segundosPorQuestao()) : null;
         Set<AreaQuestao> areas = EnumSet.copyOf(request.areas());
         List<Questao> sorteadas = sortear(usuarioId, request.banca(), areas, request.tamanho().questoes());
 
-        boolean cronometrado = request.cronometrado();
         Simulado simulado = new Simulado(
                 usuarioId,
                 request.banca(),
                 request.tamanho(),
                 areas,
                 cronometrado,
-                cronometrado ? SEGUNDOS_POR_QUESTAO : null,
+                segundosPorQuestao,
                 null,
                 clock.instant());
         return abrir(simulado, sorteadas);
@@ -95,21 +104,16 @@ public class SimuladoService {
         }
         SimuladoQuestao item = simulado.questao(ordem)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Questão " + ordem + " não encontrada no simulado"));
-        if (item.getSituacao() == SituacaoQuestao.TEMPO_ESGOTADO) {
-            throw new AcaoNaoPermitidaException("O tempo desta questão já esgotou");
-        }
-        if (request.situacao() == SituacaoQuestao.TEMPO_ESGOTADO) {
-            throw new DadosInvalidosException("situacao", "O tempo esgotado é definido pela API");
-        }
+        validarAlternativa(item, request);
 
         // O app manda o total acumulado; reenvios fora de ordem não podem diminuir o tempo.
         int tempo = Math.max(item.getTempoSegundos(), request.tempoSegundos());
-        if (simulado.isCronometrado() && tempo >= simulado.getSegundosPorQuestao()) {
-            item.esgotar(simulado.getSegundosPorQuestao(), clock.instant());
-        } else {
-            validarAlternativa(item, request);
-            item.registrar(request.situacao(), request.alternativa(), tempo, clock.instant());
-        }
+        // Só a resposta nova dada depois do limite fica fora do tempo; reenviar a mesma não marca.
+        boolean respostaNova = request.situacao() == SituacaoQuestao.RESPONDIDA
+                && (item.getSituacao() != SituacaoQuestao.RESPONDIDA
+                        || !request.alternativa().equals(item.getAlternativaMarcada()));
+        boolean foraDoTempo = respostaNova && simulado.isCronometrado() && tempo >= simulado.getSegundosPorQuestao();
+        item.registrar(request.situacao(), request.alternativa(), tempo, foraDoTempo, clock.instant());
         return QuestaoSimulado.de(item);
     }
 
@@ -118,7 +122,7 @@ public class SimuladoService {
         Simulado simulado = buscar(usuarioId, id);
         if (!simulado.concluido()) {
             List<SimuladoQuestao> lista = simulado.questoesEmOrdem();
-            lista.forEach(SimuladoQuestao::encerrar);
+            lista.forEach(q -> q.encerrar(FORA_DO_TEMPO_CONTA_NA_NOTA));
             simulado.concluir(
                     clock.instant(),
                     contar(lista, ResultadoQuestao.ACERTO),
@@ -236,6 +240,19 @@ public class SimuladoService {
             escolhidos.forEach(id -> sorteadas.add(porId.get(id)));
         }
         return sorteadas;
+    }
+
+    private int validarTempo(Integer segundos) {
+        if (segundos == null) {
+            throw new DadosInvalidosException("segundosPorQuestao", "Escolha o tempo por questão");
+        }
+        if (segundos < SEGUNDOS_POR_QUESTAO_MINIMO
+                || segundos > SEGUNDOS_POR_QUESTAO_MAXIMO
+                || segundos % SEGUNDOS_POR_QUESTAO_PASSO != 0) {
+            throw new DadosInvalidosException(
+                    "segundosPorQuestao", "O tempo por questão vai de 1 a 10 minutos, de 30 em 30 segundos");
+        }
+        return segundos;
     }
 
     private void validarAlternativa(SimuladoQuestao item, ResponderQuestaoRequest request) {
