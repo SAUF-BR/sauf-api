@@ -173,6 +173,17 @@ Vêm da comparação entre as telas do protótipo e os dados que temos (`05-prot
 |---|---|---|
 | D-68 | **Ingestão de questões** em `POST /api/v1/ingestao/questoes` (mesma `X-Api-Key`). Um lote por prova, identificada por `banca` + `ano` + `edicao` + `caderno` (ENEM: um lote por dia, `D1`/`D2`, caderno `LARANJA`; ADR-SC-010). A questão é identificada por `numero` + `lingua` (as questões 1 a 5 do ENEM existem em inglês e em espanhol). Reenviar **atualiza** a questão e **troca todas as alternativas**; questão que não veio no lote **fica** (não é apagada). O texto-base é guardado uma vez por prova (hash SHA-256 do conteúdo) e é apagado quando nenhuma questão o usa mais. Validações, que **recusam só a questão** (vai para `rejeitados` como `questão N: motivo`, o resto do lote segue): rótulo repetido; múltipla escolha com **exatamente 1 correta** (0 se anulada); somatória com `valor` em todas as alternativas e `gabaritoSoma` igual à soma das corretas; número repetido no lote. Enum inválido ou campo obrigatório faltando: **400** no lote todo. **`status`**: `disponivel` (pode ir para simulado) ou `pendente_revisao` (com `motivoPendencia`, ex.: fórmula escrita por extenso, tabela com sobras da conversão, alternativa só com figura); as rotas de simulado vão sortear só as disponíveis. Figuras ficam como imagem Markdown no texto, com a URL original e a descrição como texto alternativo. Sem língua estrangeira, `lingua` é gravada como `''` (e volta `null`), porque `NULL` não conta no `UNIQUE` do Postgres. | Popular o banco de questões dos simulados (ENEM 2022 a 2024, 540 questões) sem perder questões boas por causa de uma ruim, e marcar as que precisam de revisão em vez de descartá-las. |
 
+### Simulados (13/11/2026)
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-80 | **Modelo: simulado = tentativa.** `simulado` guarda a tentativa de um usuário (`banca`, `tamanho`, `cronometrado`, `segundos_por_questao`, `status` EM_ANDAMENTO/CONCLUIDO, `iniciado_em`, `finalizado_em`, `acertos`, `erros`, `em_branco`, `origem_id`), `simulado_area` guarda as áreas escolhidas e `simulado_questao` (chave `simulado_id` + `ordem`) guarda cada questão sorteada com `situacao` (PENDENTE, RESPONDIDA, EM_BRANCO, TEMPO_ESGOTADO), `alternativa_marcada`, `correta`, `tempo_segundos` e `atualizada_em`. A mesma questão não repete no mesmo simulado. **Só o ENEM está ativo** (`banca` diferente de `enem`: 400); as 4 áreas são `lc`, `ch`, `cn` e `mt`, sem redação. **Usuário provisório:** o dono é o `UsuarioLogado` (D-55) e `usuario_id` fica sem chave estrangeira; simulado de outro usuário responde **404**. As rotas ficam em `/api/v1/simulados` e não exigem `X-Api-Key`. | Tela de simulados do front (TR-409). O login só troca a classe `UsuarioLogado` e uma migration cria a chave estrangeira. |
+| D-81 | **Sorteio.** Só questões `disponivel`, não anuladas e com `lingua` diferente de `ESPANHOL` (hoje só há inglês nas questões 1 a 5 de `lc`). O total do tamanho (`rapida` 10, `media` 20, `longa` 30) é dividido igualmente entre as áreas escolhidas, e **o resto vai para as primeiras na ordem lc, ch, cn, mt** (30 em 4 áreas: 8, 8, 7, 7). Dentro de cada área, entram primeiro as questões que o usuário **nunca teve em nenhum simulado** (qualquer status), em ordem aleatória (embaralhado em Java, portátil entre Postgres e H2), e só depois as repetidas, também embaralhadas. A ordem final é agrupada por área (lc, ch, cn, mt). Se uma área não tiver questões para a sua parte, **409** `Não há questões suficientes de <área> para este simulado`. `GET /simulados/opcoes` informa as questões sorteáveis por área. | Simulado sem repetir questão enquanto houver inédita, e sem misturar língua. |
+| D-82 | **Cronômetro por questão e tempo esgotado.** Com `cronometrado`, cada questão tem **150 s** (`segundosPorQuestao`). O app manda em `PUT /simulados/{id}/questoes/{ordem}` o tempo **total acumulado** na questão, e a API **guarda o maior** entre o atual e o recebido. Com tempo cronometrado maior ou igual a 150, a questão vira `tempo_esgotado`, sem alternativa e com `tempo_segundos = 150`; ela fica bloqueada (**409** em qualquer envio novo) e conta como em branco na correção. Simulado já finalizado: **409**. `alternativa` que a questão não tem, `respondida` sem alternativa e `situacao = tempo_esgotado` enviada pelo app: **400** (o esgotamento é decidido só pela API). Sem cronômetro não há limite, mas o tempo continua medido. O relógio é um `java.time.Clock` injetável (bean em `config/RelogioConfig`), para os testes de tempo. | O servidor é quem decide o esgotamento; reenvio fora de ordem não pode diminuir o tempo. |
+| D-83 | **Correção só no back e gabarito só na revisão.** `GET /simulados/{id}` e a resposta do `PUT` **nunca** trazem `alternativaCorreta` nem `correta`. `POST /simulados/{id}/finalizar` transforma as pendentes em `em_branco`, grava `correta` por questão e `acertos`, `erros` e `em_branco` (tempo esgotado e em branco contam como em branco) e devolve a revisão, com `alternativaCorreta`, `resultado` (`acerto`, `erro`, `em_branco`), `porcentagemAcerto` (1 casa), `duracaoSegundos` (soma dos tempos) e `porArea`. **Finalizar é idempotente:** a segunda chamada devolve a mesma revisão. `GET /simulados/{id}/revisao` em andamento: **409**. A revisão mostra só o gabarito, sem explicação. | O gabarito não pode vazar antes do fim. |
+| D-84 | **Refazer erros.** `POST /simulados/{id}/refazer-erros` cria um simulado novo só com as questões de `resultado = erro`, na ordem original e renumeradas, com `tamanho` nulo, o mesmo `cronometrado` e `origem_id` apontando o simulado de origem. As áreas são as das questões erradas e o título é `Refazer erros · <título do simulado de origem>`. **409** se o simulado não está concluído ou não teve erros. Os itens da lista de simulados trazem `cronometrado`, para o front refazer com a mesma configuração. | Estudar de novo só o que errou. |
+| D-85 | **Métricas.** `GET /simulados/resumo` (sobre os concluídos): `simuladosFeitos`, `questoesRespondidas` (situação respondida, em todos os simulados), `aproveitamentoMedio` (acertos de todas as questões dos concluídos, em %, 1 casa; `null` sem concluídos) e `melhorArea` (área de maior % de acerto nos concluídos). A lista (`GET /simulados`, `status`, `ordem` = `recente`, `antigo`, `maior_nota`, `menor_nota`, `page`, `size`, padrão recente e 12) ordena por nota no banco e põe os em andamento no fim. **`GET /simulados/cronometro?periodo=semana, mes ou ano`** (janelas de 7, 30 e 365 dias até hoje, inclusive; anterior = janela vizinha do mesmo tamanho, `null` no ano): tempo de estudo = soma de `tempo_segundos` das respostas pela data de `atualizada_em`; **dia ativo** = dia com ao menos uma resposta (situação diferente de pendente ou tempo maior que 0); `tempoMedioQuestao` = tempo total / questões com tempo maior que 0 (0 se nenhuma); **ofensiva** = dias ativos seguidos até hoje (ou até ontem, se hoje ainda não teve estudo) e **recorde** = maior sequência do último ano. `dias` traz os últimos 365 dias, um item por dia (com zeros); `horasPorSemana` traz S1 a S4 (S4 = últimos 7 dias, valores em segundos); `porConfiguracao` traz um item por tamanho que tenha simulado concluído na janela (`rapida`, `media`, `longa`); `ritmoPorCategoria` traz uma área por item (`lc`, ...). **Os dias são os de `America/Sao_Paulo`** (uma resposta às 23h30 de Brasília, já 02h30 UTC do dia seguinte, conta no dia de Brasília). `atualizada_em` só muda quando o aluno mexe na questão; pendente convertida na finalização não conta como estudo. O tempo da questão vai todo para o dia da última atualização. | Estatísticas da tela Cronômetro (`DadosCronometro` do front) sem o front recalcular nada. |
+
 ---
 
 ## 3. Estrutura da v1 (implementada)
@@ -221,6 +232,14 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
       `credito`, `atualizada_em`. Única por (`prova_id`, `numero`, `lingua`).
     - **`alternativa`**: (`questao_id`, `rotulo`) + `valor` (somatória), `texto`, `correta`.
 
+- **Simulados** (D-80, `V2026_11_13_1908__simulados.sql`):
+    - **`simulado`**: `id`, `usuario_id` (sem chave estrangeira, D-55), `banca`, `tamanho` (nulo no
+      refazer erros), `cronometrado`, `segundos_por_questao`, `status`, `iniciado_em`,
+      `finalizado_em`, `acertos`, `erros`, `em_branco` (nulos até finalizar), `origem_id`.
+    - **`simulado_area`**: (`simulado_id`, `area`).
+    - **`simulado_questao`**: (`simulado_id`, `ordem`) + `questao_id` (única por simulado),
+      `situacao`, `alternativa_marcada`, `correta`, `tempo_segundos`, `atualizada_em`.
+
 ### Rotas da v1
 
 | Rota | Uso no front |
@@ -237,6 +256,16 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
 | `POST /api/v1/ingestao/censo` | Import do Censo (`sauf-scraper censo`). Cria/atualiza instituições pelo código e-MEC, cursos genéricos pelo rótulo Cine (D-31, D-36) e a tabela `censo_curso`. **Não cria ofertas** (D-33); depois do import, as ofertas do site já existentes são completadas de novo. Exige `X-Api-Key`. |
 | `POST /api/v1/ingestao/lotes` | Lote do scraper. Cria/atualiza uma oferta por página pela `chave` (D-34), com `opcoes` e `codigosEmec`, e completa com o Censo (D-35). Instituição não cadastrada: **422**. Exige `X-Api-Key`. |
 | `POST /api/v1/ingestao/questoes` | Lote de questões de uma prova (`sauf-scraper questoes enem --ano ...`). Upsert por prova e por número + língua; recusa só a questão inválida (D-68). Exige `X-Api-Key`. |
+| `GET /api/v1/simulados/opcoes` | Tamanhos, segundos por questão, bancas e áreas com as questões sorteáveis (D-81). |
+| `POST /api/v1/simulados` | Cria o simulado e sorteia as questões. 400 sem áreas ou banca inválida; 409 sem questões suficientes (D-80, D-81). |
+| `GET /api/v1/simulados` | Lista paginada (12 por página) com `status` e `ordem` (`recente`, `antigo`, `maior_nota`, `menor_nota`) (D-85). |
+| `GET /api/v1/simulados/{id}` | Simulado com as questões, nunca com gabarito (D-83). |
+| `PUT /api/v1/simulados/{id}/questoes/{ordem}` | Registra resposta e tempo acumulado; tempo esgotado no simulado cronometrado (D-82). |
+| `POST /api/v1/simulados/{id}/finalizar` | Corrige e devolve a revisão; idempotente (D-83). |
+| `GET /api/v1/simulados/{id}/revisao` | Revisão com gabarito; 409 em andamento (D-83). |
+| `POST /api/v1/simulados/{id}/refazer-erros` | Novo simulado só com as questões erradas (D-84). |
+| `GET /api/v1/simulados/resumo` | Simulados feitos, questões respondidas, aproveitamento médio e melhor área (D-85). |
+| `GET /api/v1/simulados/cronometro` | Estatísticas de tempo de estudo, `periodo` = `semana`, `mes` ou `ano` (D-85). |
 | `GET /api/v1/assinatura/planos` | Planos da tela de assinatura, do mais barato ao mais caro (D-54). |
 | `GET /api/v1/assinatura` | Assinatura vigente do usuário: `{plano, status, renovaEm}`, ou **204** se não houver (D-56). |
 | `PUT /api/v1/assinatura` | Assina ou troca de plano. Corpo `{ "plano": "plus" }`. Plano inexistente: **400**; o mesmo plano já ativo: **409**. |
@@ -256,6 +285,7 @@ de rascunho (V1 a V5) foram juntadas. A partir de agora, com o Supabase em uso, 
 no banco vira uma migração nova** (`V2__...`), nunca uma edição da V1.
 Assinaturas: `V2026_10_21_2033__assinaturas.sql` (nome com data, D-52).
 Banco de questões: `V2026_11_08_0945__banco_questoes.sql` (D-68).
+Simulados: `V2026_11_13_1908__simulados.sql` (D-80).
 
 Paginação: `page` (começa em 0), `size` (padrão 12, máximo 50) e `sort` (ex.: `sort=nome,asc`).
 Swagger: `/api/v1/swagger`.
