@@ -15,6 +15,7 @@ public record QuestaoRevisao(
         List<AlternativaSimulado> alternativas,
         ResultadoQuestao resultado,
         boolean tempoEsgotado,
+        boolean foraDoTempo,
         String alternativaMarcada,
         String alternativaCorreta,
         int tempoSegundos) {
@@ -30,7 +31,8 @@ public record QuestaoRevisao(
                 q.getComando(),
                 QuestaoSimulado.alternativas(q),
                 sq.resultado(),
-                sq.getSituacao() == SituacaoQuestao.TEMPO_ESGOTADO,
+                sq.tempoEsgotado(),
+                sq.respondidaForaDoTempo(),
                 sq.getAlternativaMarcada(),
                 sq.rotuloCorreto(),
                 sq.getTempoSegundos());

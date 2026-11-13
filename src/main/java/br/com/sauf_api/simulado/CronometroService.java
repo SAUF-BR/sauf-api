@@ -145,8 +145,8 @@ public class CronometroService {
                     .mapToInt(SimuladoQuestao::getTempoSegundos)
                     .sum();
             int porQuestao = media(total, doTamanho.size() * tamanho.questoes());
-            String observacao = porQuestao > SimuladoService.SEGUNDOS_POR_QUESTAO
-                    ? "Acima do limite de 2m30 por questão"
+            String observacao = porQuestao > SimuladoService.SEGUNDOS_POR_QUESTAO_PADRAO
+                    ? "Acima do ritmo sugerido de 2m30 por questão"
                     : null;
             resultado.add(new DadosCronometro.Configuracao(
                     tamanho,

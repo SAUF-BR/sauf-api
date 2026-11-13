@@ -5,7 +5,11 @@ import br.com.sauf_api.questao.Banca;
 import java.util.List;
 
 public record OpcoesSimulado(
-        List<TamanhoOpcao> tamanhos, int segundosPorQuestao, List<BancaOpcao> bancas, List<AreaOpcao> areas) {
+        List<TamanhoOpcao> tamanhos,
+        int segundosPorQuestao,
+        List<Integer> temposPorQuestao,
+        List<BancaOpcao> bancas,
+        List<AreaOpcao> areas) {
 
     public record TamanhoOpcao(TamanhoSimulado id, int questoes) {}
 
