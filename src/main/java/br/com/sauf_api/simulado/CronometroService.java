@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CronometroService {
 
-    static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
+    static final ZoneId FUSO = JanelaPeriodo.FUSO;
     static final int DIAS_DO_ANO = 365;
 
     private final SimuladoRepository simulados;
@@ -35,7 +35,7 @@ public class CronometroService {
 
     @Transactional(readOnly = true)
     public DadosCronometro dados(UUID usuarioId, PeriodoCronometro periodo) {
-        LocalDate hoje = clock.instant().atZone(FUSO).toLocalDate();
+        LocalDate hoje = JanelaPeriodo.hoje(clock);
         LocalDate inicioDoAno = hoje.minusDays(DIAS_DO_ANO - 1);
 
         List<Resposta> respostas = itens.atividadeDesde(usuarioId, inicio(inicioDoAno)).stream()
@@ -49,9 +49,10 @@ public class CronometroService {
         Map<LocalDate, Integer> segundosPorDia = new HashMap<>();
         respostas.forEach(r -> segundosPorDia.merge(r.dia(), r.segundos(), Integer::sum));
 
-        int n = periodo.dias();
-        Janela atual = janela(respostas, hoje.minusDays(n - 1), hoje);
-        Janela anterior = periodo == PeriodoCronometro.ANO ? null : janela(respostas, hoje.minusDays(2L * n - 1), hoje.minusDays(n));
+        JanelaPeriodo janelaAtual = JanelaPeriodo.movel(periodo, hoje);
+        Janela atual = janela(respostas, janelaAtual);
+        // Só há dados de um ano para trás, então o ano não tem anterior.
+        Janela anterior = periodo == PeriodoCronometro.ANO ? null : janela(respostas, janelaAtual.anterior());
 
         return new DadosCronometro(
                 new DadosCronometro.Comparativo(atual.total(), anterior == null ? null : anterior.total()),
@@ -59,21 +60,21 @@ public class CronometroService {
                 new DadosCronometro.Comparativo(atual.dias().size(), anterior == null ? null : anterior.dias().size()),
                 ofensiva(segundosPorDia.keySet(), hoje, inicioDoAno),
                 dias(segundosPorDia, hoje, inicioDoAno),
-                porConfiguracao(usuarioId, hoje.minusDays(n - 1)),
+                porConfiguracao(usuarioId, janelaAtual.inicio()),
                 semanas(segundosPorDia, hoje),
-                ritmoPorArea(respostas, hoje.minusDays(n - 1), hoje));
+                ritmoPorArea(respostas, janelaAtual));
     }
 
     private record Resposta(LocalDate dia, AreaQuestao area, int segundos) {}
 
     private record Janela(int total, int medio, Set<LocalDate> dias) {}
 
-    private Janela janela(List<Resposta> respostas, LocalDate de, LocalDate ate) {
+    private Janela janela(List<Resposta> respostas, JanelaPeriodo periodo) {
         int total = 0;
         int comTempo = 0;
         Set<LocalDate> dias = new HashSet<>();
         for (Resposta r : respostas) {
-            if (r.dia().isBefore(de) || r.dia().isAfter(ate)) {
+            if (!periodo.contem(r.dia())) {
                 continue;
             }
             total += r.segundos();
@@ -91,21 +92,9 @@ public class CronometroService {
         return dia.atStartOfDay(FUSO).toInstant();
     }
 
-    // Conta os dias seguidos até hoje; se hoje ainda não teve estudo, a sequência de ontem continua valendo.
     private DadosCronometro.Ofensiva ofensiva(Set<LocalDate> ativos, LocalDate hoje, LocalDate inicio) {
-        LocalDate dia = ativos.contains(hoje) ? hoje : hoje.minusDays(1);
-        int atual = 0;
-        while (ativos.contains(dia)) {
-            atual++;
-            dia = dia.minusDays(1);
-        }
-        int recorde = 0;
-        int sequencia = 0;
-        for (LocalDate d = inicio; !d.isAfter(hoje); d = d.plusDays(1)) {
-            sequencia = ativos.contains(d) ? sequencia + 1 : 0;
-            recorde = Math.max(recorde, sequencia);
-        }
-        return new DadosCronometro.Ofensiva(atual, recorde);
+        ConstanciaCalculadora.Ofensiva ofensiva = ConstanciaCalculadora.ofensiva(ativos, hoje, inicio);
+        return new DadosCronometro.Ofensiva(ofensiva.atual(), ofensiva.recorde());
     }
 
     private List<DadosCronometro.Dia> dias(Map<LocalDate, Integer> segundosPorDia, LocalDate hoje, LocalDate inicio) {
@@ -160,10 +149,10 @@ public class CronometroService {
         return resultado;
     }
 
-    private List<DadosCronometro.Ritmo> ritmoPorArea(List<Resposta> respostas, LocalDate de, LocalDate ate) {
+    private List<DadosCronometro.Ritmo> ritmoPorArea(List<Resposta> respostas, JanelaPeriodo periodo) {
         Map<AreaQuestao, int[]> porArea = new EnumMap<>(AreaQuestao.class);
         for (Resposta r : respostas) {
-            if (r.dia().isBefore(de) || r.dia().isAfter(ate)) {
+            if (!periodo.contem(r.dia())) {
                 continue;
             }
             int[] c = porArea.computeIfAbsent(r.area(), a -> new int[2]);
