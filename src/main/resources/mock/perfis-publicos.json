@@ -1,0 +1,281 @@
+[
+  {
+    "usuarioId": "f9def6d7-0717-4540-8ad0-ec03e301b2c7",
+    "nome": "Estudante Teste",
+    "cidade": "Maringá",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": false
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000001",
+    "nome": "Larissa Campos",
+    "cidade": "Maringá",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000002",
+    "nome": "Bruno Teixeira",
+    "cidade": "Londrina",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": false
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000003",
+    "nome": "Camila Rocha",
+    "cidade": "Curitiba",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000004",
+    "nome": "Davi Moreira",
+    "cidade": "Cascavel",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": true,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000005",
+    "nome": "Eduarda Lima",
+    "cidade": "Maringá",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000006",
+    "nome": "Felipe Araújo",
+    "cidade": "São Paulo",
+    "uf": "SP",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000007",
+    "nome": "Gabriela Nunes",
+    "cidade": "Ponta Grossa",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000008",
+    "nome": "Henrique Prado",
+    "cidade": "Joinville",
+    "uf": "SC",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": false
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000009",
+    "nome": "Isabela Freitas",
+    "cidade": "Londrina",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000010",
+    "nome": "João Vieira",
+    "cidade": "Curitiba",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000011",
+    "nome": "Karina Duarte",
+    "cidade": "Porto Alegre",
+    "uf": "RS",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000012",
+    "nome": "Lucas Barros",
+    "cidade": "Maringá",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000013",
+    "nome": "Mariana Lopes",
+    "cidade": "Belo Horizonte",
+    "uf": "MG",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000014",
+    "nome": "Nicolas Fonseca",
+    "cidade": "Cascavel",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": true,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000015",
+    "nome": "Olívia Ramos",
+    "cidade": "Curitiba",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000016",
+    "nome": "Pedro Cardoso",
+    "cidade": "Londrina",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": false
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000017",
+    "nome": "Rafaela Pinto",
+    "cidade": "Campinas",
+    "uf": "SP",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000018",
+    "nome": "Samuel Batista",
+    "cidade": "Maringá",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000019",
+    "nome": "Tatiane Correia",
+    "cidade": "Ponta Grossa",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000020",
+    "nome": "Vinícius Moura",
+    "cidade": "Curitiba",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000021",
+    "nome": "Yasmin Castro",
+    "cidade": "Florianópolis",
+    "uf": "SC",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000022",
+    "nome": "André Monteiro",
+    "cidade": "Maringá",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000023",
+    "nome": "Beatriz Farias",
+    "cidade": "Londrina",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000024",
+    "nome": "Caio Mendes",
+    "cidade": "Cascavel",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000025",
+    "nome": "Débora Santana",
+    "cidade": "Curitiba",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000026",
+    "nome": "Enzo Ribeiro",
+    "cidade": "Maringá",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": false
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000027",
+    "nome": "Fernanda Siqueira",
+    "cidade": "Ribeirão Preto",
+    "uf": "SP",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000028",
+    "nome": "Gustavo Pereira",
+    "cidade": "Ponta Grossa",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000029",
+    "nome": "Helena Azevedo",
+    "cidade": "Curitiba",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  },
+  {
+    "usuarioId": "5eed0000-0000-4000-8000-000000000030",
+    "nome": "Igor Matos",
+    "cidade": "Londrina",
+    "uf": "PR",
+    "fotoUrl": null,
+    "menorDeIdade": false,
+    "aparecerNoRanking": true
+  }
+]
