@@ -2,6 +2,7 @@ package br.com.sauf_api.simulado;
 
 import br.com.sauf_api.comum.Pagina;
 import br.com.sauf_api.comum.UsuarioLogado;
+import br.com.sauf_api.questao.Banca;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -23,11 +24,20 @@ public class SimuladoController {
 
     private final SimuladoService service;
     private final CronometroService cronometro;
+    private final AcompanhamentoService acompanhamento;
+    private final RankingService ranking;
     private final UsuarioLogado usuarioLogado;
 
-    public SimuladoController(SimuladoService service, CronometroService cronometro, UsuarioLogado usuarioLogado) {
+    public SimuladoController(
+            SimuladoService service,
+            CronometroService cronometro,
+            AcompanhamentoService acompanhamento,
+            RankingService ranking,
+            UsuarioLogado usuarioLogado) {
         this.service = service;
         this.cronometro = cronometro;
+        this.acompanhamento = acompanhamento;
+        this.ranking = ranking;
         this.usuarioLogado = usuarioLogado;
     }
 
@@ -58,6 +68,20 @@ public class SimuladoController {
     @GetMapping("/cronometro")
     public DadosCronometro cronometro(@RequestParam(defaultValue = "semana") PeriodoCronometro periodo) {
         return cronometro.dados(usuarioLogado.id(), periodo);
+    }
+
+    @GetMapping("/acompanhamento")
+    public DadosAcompanhamento acompanhamento(
+            @RequestParam(defaultValue = "mes") PeriodoCronometro periodo,
+            @RequestParam(required = false) Banca vestibular) {
+        return acompanhamento.dados(usuarioLogado.id(), periodo, vestibular);
+    }
+
+    @GetMapping("/ranking")
+    public DadosRanking ranking(
+            @RequestParam(defaultValue = "mes") PeriodoCronometro periodo,
+            @RequestParam(required = false) Banca vestibular) {
+        return ranking.dados(usuarioLogado.id(), periodo, vestibular);
     }
 
     @GetMapping("/{id}")

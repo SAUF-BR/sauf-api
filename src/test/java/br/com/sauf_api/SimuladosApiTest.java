@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.sauf_api.comum.UsuarioLogado;
 import br.com.sauf_api.questao.Alternativa;
 import br.com.sauf_api.questao.AreaQuestao;
 import br.com.sauf_api.questao.Banca;
@@ -18,6 +19,8 @@ import br.com.sauf_api.questao.QuestaoRepository;
 import br.com.sauf_api.questao.StatusQuestao;
 import br.com.sauf_api.questao.TipoQuestao;
 import com.jayway.jsonpath.JsonPath;
+import jakarta.persistence.EntityManager;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -25,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +38,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -82,6 +87,8 @@ class SimuladosApiTest {
     @Autowired ProvaRepository provas;
     @Autowired QuestaoRepository questoes;
     @Autowired RelogioDeTeste relogio;
+    @Autowired EntityManager em;
+    @Autowired JdbcTemplate jdbc;
 
     private Prova prova;
     private int proximoNumero;
@@ -752,7 +759,269 @@ class SimuladosApiTest {
                 .andExpect(jsonPath("$.ofensiva.recorde").value(3));
     }
 
+    // ---------- acompanhamento ----------
+
+    @Test
+    void acompanhamentoSemSimuladosVemVazio() throws Exception {
+        mvc.perform(get("/api/v1/simulados/acompanhamento"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.periodo").value("mes"))
+                .andExpect(jsonPath("$.janela.inicio").value("2026-10-15"))
+                .andExpect(jsonPath("$.janela.fim").value("2026-11-13"))
+                .andExpect(jsonPath("$.resumo.aproveitamento.atual").isEmpty())
+                .andExpect(jsonPath("$.resumo.aproveitamento.anterior").isEmpty())
+                .andExpect(jsonPath("$.resumo.questoesRespondidas.atual").value(0))
+                .andExpect(jsonPath("$.resumo.simuladosConcluidos.atual").value(0))
+                .andExpect(jsonPath("$.evolucao.mediaPlataforma").isEmpty())
+                .andExpect(jsonPath("$.evolucao.simulados.length()").value(0))
+                .andExpect(jsonPath("$.distribuicao.atual.acertos").value(0))
+                .andExpect(jsonPath("$.areas.length()").value(4))
+                .andExpect(jsonPath("$.areas[0].aproveitamento.atual").isEmpty())
+                .andExpect(jsonPath("$.focos.length()").value(0))
+                .andExpect(jsonPath("$.constancia.diasAtivos").value(0))
+                .andExpect(jsonPath("$.constancia.diasNaJanela").value(30))
+                .andExpect(jsonPath("$.constancia.ofensiva").value(0))
+                .andExpect(jsonPath("$.constancia.semanas.length()").value(4))
+                .andExpect(jsonPath("$.constancia.semanas[3].inicio").value("2026-11-07"));
+    }
+
+    @Test
+    void acompanhamentoComparaComAJanelaAnterior() throws Exception {
+        relogio.agora = Instant.parse("2026-11-03T15:00:00Z"); // semana anterior (31/10 a 06/11)
+        concluido(5);
+        relogio.agora = Instant.parse("2026-11-13T15:00:00Z"); // semana atual (07/11 a 13/11)
+        concluido(7);
+
+        mvc.perform(get("/api/v1/simulados/acompanhamento").param("periodo", "semana"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.janela.inicio").value("2026-11-07"))
+                .andExpect(jsonPath("$.resumo.aproveitamento.atual").value(70.0))
+                .andExpect(jsonPath("$.resumo.aproveitamento.anterior").value(50.0))
+                .andExpect(jsonPath("$.resumo.questoesRespondidas.atual").value(10))
+                .andExpect(jsonPath("$.resumo.questoesRespondidas.anterior").value(10))
+                .andExpect(jsonPath("$.resumo.simuladosConcluidos.atual").value(1))
+                .andExpect(jsonPath("$.resumo.simuladosConcluidos.anterior").value(1))
+                .andExpect(jsonPath("$.resumo.acertos.atual").value(7))
+                .andExpect(jsonPath("$.resumo.acertos.anterior").value(5))
+                .andExpect(jsonPath("$.evolucao.mediaPlataforma").isEmpty())
+                .andExpect(jsonPath("$.evolucao.simulados.length()").value(1))
+                .andExpect(jsonPath("$.evolucao.simulados[0].aproveitamento").value(70.0))
+                .andExpect(jsonPath("$.distribuicao.atual.acertos").value(7))
+                .andExpect(jsonPath("$.distribuicao.atual.erros").value(3))
+                .andExpect(jsonPath("$.distribuicao.atual.emBranco").value(0))
+                .andExpect(jsonPath("$.distribuicao.anterior.erros").value(5))
+                .andExpect(jsonPath("$.areas[0].area").value("lc"))
+                .andExpect(jsonPath("$.areas[0].aproveitamento.atual").value(70.0))
+                .andExpect(jsonPath("$.areas[0].aproveitamento.anterior").value(50.0))
+                .andExpect(jsonPath("$.areas[0].respondidas").value(10))
+                .andExpect(jsonPath("$.areas[3].area").value("mt"))
+                .andExpect(jsonPath("$.areas[3].aproveitamento.atual").isEmpty())
+                // sem habilidade nas questões, o foco é a área
+                .andExpect(jsonPath("$.focos.length()").value(1))
+                .andExpect(jsonPath("$.focos[0].area").value("lc"))
+                .andExpect(jsonPath("$.focos[0].habilidade").isEmpty())
+                .andExpect(jsonPath("$.focos[0].erros").value(3))
+                .andExpect(jsonPath("$.constancia.diasAtivos").value(1))
+                .andExpect(jsonPath("$.constancia.diasNaJanela").value(7))
+                .andExpect(jsonPath("$.constancia.ofensiva").value(1))
+                .andExpect(jsonPath("$.constancia.semanas.length()").value(7))
+                .andExpect(jsonPath("$.constancia.semanas[6].inicio").value("2026-11-13"))
+                .andExpect(jsonPath("$.constancia.semanas[6].diasAtivos").value(1));
+
+        mvc.perform(get("/api/v1/simulados/acompanhamento").param("periodo", "ano"))
+                .andExpect(jsonPath("$.resumo.simuladosConcluidos.atual").value(2))
+                .andExpect(jsonPath("$.evolucao.simulados.length()").value(2))
+                .andExpect(jsonPath("$.evolucao.simulados[0].aproveitamento").value(50.0))
+                .andExpect(jsonPath("$.constancia.diasAtivos").value(2))
+                .andExpect(jsonPath("$.constancia.semanas.length()").value(12))
+                .andExpect(jsonPath("$.constancia.semanas[11].inicio").value("2026-11-01"))
+                .andExpect(jsonPath("$.constancia.semanas[11].diasAtivos").value(2));
+
+        mvc.perform(get("/api/v1/simulados/acompanhamento").param("vestibular", "uem"))
+                .andExpect(jsonPath("$.resumo.aproveitamento.atual").isEmpty());
+        mvc.perform(get("/api/v1/simulados/acompanhamento").param("periodo", "decada"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void acompanhamentoSoComQuestoesEmBranco() throws Exception {
+        UUID id = idDe(criar("rapida", "[\"lc\"]", false));
+        mvc.perform(post("/api/v1/simulados/{id}/finalizar", id)).andExpect(status().isOk());
+
+        mvc.perform(get("/api/v1/simulados/acompanhamento"))
+                .andExpect(jsonPath("$.resumo.aproveitamento.atual").value(0.0))
+                .andExpect(jsonPath("$.resumo.questoesRespondidas.atual").value(0))
+                .andExpect(jsonPath("$.resumo.simuladosConcluidos.atual").value(1))
+                .andExpect(jsonPath("$.distribuicao.atual.emBranco").value(10))
+                .andExpect(jsonPath("$.focos.length()").value(0))
+                .andExpect(jsonPath("$.constancia.diasAtivos").value(0));
+    }
+
+    @Test
+    void focosVemDasHabilidadesComMaisErrosEDepoisDasAreas() throws Exception {
+        em.createQuery("update Questao q set q.habilidade = 17 where q.area = :area")
+                .setParameter("area", AreaQuestao.CN)
+                .executeUpdate();
+        UUID id = idDe(criar("rapida", "[\"cn\"]", false));
+        for (int ordem = 1; ordem <= 10; ordem++) {
+            responder(id, ordem, ordem <= 6 ? CERTA : ERRADA, "respondida", 10);
+        }
+        mvc.perform(post("/api/v1/simulados/{id}/finalizar", id)).andExpect(status().isOk());
+        concluido(8); // lc sem habilidade, 2 erros
+
+        mvc.perform(get("/api/v1/simulados/acompanhamento"))
+                .andExpect(jsonPath("$.focos.length()").value(2))
+                .andExpect(jsonPath("$.focos[0].ordem").value(1))
+                .andExpect(jsonPath("$.focos[0].area").value("cn"))
+                .andExpect(jsonPath("$.focos[0].habilidade").value("H17"))
+                .andExpect(jsonPath("$.focos[0].descricao").value(Matchers.startsWith(
+                        "Relacionar informações apresentadas em diferentes formas de linguagem")))
+                .andExpect(jsonPath("$.focos[0].erros").value(4))
+                .andExpect(jsonPath("$.focos[0].respondidas").value(10))
+                .andExpect(jsonPath("$.focos[1].area").value("lc"))
+                .andExpect(jsonPath("$.focos[1].habilidade").isEmpty())
+                .andExpect(jsonPath("$.focos[1].erros").value(2));
+    }
+
+    @Test
+    void mediaDaPlataformaSoComCincoAlunos() throws Exception {
+        concluido(7);
+        simuladoDeOutroAluno(5);
+        simuladoDeOutroAluno(6);
+        simuladoDeOutroAluno(8);
+
+        mvc.perform(get("/api/v1/simulados/acompanhamento"))
+                .andExpect(jsonPath("$.evolucao.mediaPlataforma").isEmpty());
+
+        simuladoDeOutroAluno(9);
+        mvc.perform(get("/api/v1/simulados/acompanhamento"))
+                .andExpect(jsonPath("$.evolucao.mediaPlataforma").value(70.0));
+    }
+
+    // ---------- ranking ----------
+
+    // Alunos de src/main/resources/mock/perfis-publicos.json
+    static UUID aluno(int n) {
+        return UUID.fromString("5eed0000-0000-4000-8000-%012d".formatted(n));
+    }
+
+    @Test
+    void rankingSemTempoNaJanela() throws Exception {
+        mvc.perform(get("/api/v1/simulados/ranking"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.periodo").value("mes"))
+                .andExpect(jsonPath("$.janela.inicio").value("2026-11-01"))
+                .andExpect(jsonPath("$.janela.fim").value("2026-11-30"))
+                .andExpect(jsonPath("$.totalParticipantes").value(0))
+                .andExpect(jsonPath("$.podio.length()").value(0))
+                .andExpect(jsonPath("$.colocacao").isEmpty())
+                .andExpect(jsonPath("$.percentil").isEmpty())
+                .andExpect(jsonPath("$.estatisticas.segundos").value(0))
+                .andExpect(jsonPath("$.estatisticas.simulados").value(0));
+
+        // 13/11/2026 é sexta: a semana do calendário vai de segunda (09) a domingo (15)
+        mvc.perform(get("/api/v1/simulados/ranking").param("periodo", "semana"))
+                .andExpect(jsonPath("$.janela.inicio").value("2026-11-09"))
+                .andExpect(jsonPath("$.janela.fim").value("2026-11-15"));
+        mvc.perform(get("/api/v1/simulados/ranking").param("periodo", "decada"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rankingLimitaOTempoDesempataEFiltraOPodio() throws Exception {
+        Instant hoje = relogio.agora;
+        simuladoComTempo(aluno(1), 200, hoje); // 10 × 150 (limite) = 1500, 1º
+        simuladoComTempo(aluno(2), 140, hoje); // 1400, 2º, não quer aparecer
+        simuladoComTempo(aluno(3), 60, hoje); // 1200 em 2 simulados, 3º
+        simuladoComTempo(aluno(3), 60, hoje);
+        simuladoComTempo(aluno(5), 120, hoje); // 1200 em 1 simulado, 4º
+        simuladoComTempo(aluno(4), 110, hoje); // 1100, 5º, menor de idade
+        simuladoComTempo(aluno(6), 90, Instant.parse("2026-10-31T12:00:00Z")); // mês anterior, fora
+
+        UUID id = idDe(criar("rapida", "[\"lc\"]", true));
+        for (int ordem = 1; ordem <= 10; ordem++) {
+            responder(id, ordem, CERTA, "respondida", 50);
+        }
+        mvc.perform(post("/api/v1/simulados/{id}/finalizar", id)).andExpect(status().isOk());
+        // Em outubro: o aluno 6 com 900 s e o aluno de teste com 300 s
+        simuladoComTempo(UsuarioLogado.PROVISORIO, 30, Instant.parse("2026-10-20T12:00:00Z"));
+
+        mvc.perform(get("/api/v1/simulados/ranking"))
+                .andExpect(jsonPath("$.totalParticipantes").value(6))
+                .andExpect(jsonPath("$.podio.length()").value(2))
+                .andExpect(jsonPath("$.podio[0].posicao").value(1))
+                .andExpect(jsonPath("$.podio[0].nome").value("Larissa C."))
+                .andExpect(jsonPath("$.podio[0].cidade").value("Maringá"))
+                .andExpect(jsonPath("$.podio[0].uf").value("PR"))
+                .andExpect(jsonPath("$.podio[0].segundos").value(1500))
+                .andExpect(jsonPath("$.podio[0].simulados").value(1))
+                .andExpect(jsonPath("$.podio[1].posicao").value(3))
+                .andExpect(jsonPath("$.podio[1].nome").value("Camila R."))
+                .andExpect(jsonPath("$.podio[1].simulados").value(2))
+                .andExpect(jsonPath("$.colocacao.posicao").value(6))
+                .andExpect(jsonPath("$.colocacao.anterior").value(2))
+                .andExpect(jsonPath("$.percentil").isEmpty())
+                .andExpect(jsonPath("$.estatisticas.segundos").value(500))
+                .andExpect(jsonPath("$.estatisticas.simulados").value(1))
+                .andExpect(jsonPath("$.estatisticas.ofensiva").value(1));
+    }
+
+    @Test
+    void percentilSoComVinteParticipantesNaRegiao() throws Exception {
+        Instant hoje = relogio.agora;
+        // 19 alunos do PR (tempos de 100 a 1900 por simulado) e um de SP na frente de todos
+        int[] doParana = {1, 2, 3, 4, 5, 7, 9, 10, 12, 14, 15, 16, 18, 19, 20, 22, 23, 24, 25};
+        for (int i = 0; i < doParana.length - 1; i++) {
+            simuladoComTempo(aluno(doParana[i]), 10 * (i + 1), hoje);
+        }
+        simuladoComTempo(aluno(6), 150, hoje);
+        simuladoComTempo(UsuarioLogado.PROVISORIO, 105, hoje); // 1050 s, do PR
+
+        // 18 do PR + o aluno de teste = 19: ainda sem percentil
+        mvc.perform(get("/api/v1/simulados/ranking"))
+                .andExpect(jsonPath("$.percentil").isEmpty());
+
+        simuladoComTempo(aluno(doParana[doParana.length - 1]), 190, hoje);
+        // 20 no PR; 9 com mais tempo (1100 a 1900): 10º de 20, entre os primeiros 50%
+        mvc.perform(get("/api/v1/simulados/ranking"))
+                .andExpect(jsonPath("$.totalParticipantes").value(21))
+                .andExpect(jsonPath("$.colocacao.posicao").value(11))
+                .andExpect(jsonPath("$.percentil.percentual").value(50))
+                .andExpect(jsonPath("$.percentil.regiao").value("PR"));
+    }
+
     // ---------- apoio ----------
+
+    // Simulado rápido concluído (cronometrado com limite de 150 s), com o mesmo tempo nas 10 questões.
+    private void simuladoComTempo(UUID usuario, int segundosPorQuestao, Instant finalizadoEm) {
+        UUID id = UUID.randomUUID();
+        Timestamp quando = Timestamp.from(finalizadoEm);
+        jdbc.update("""
+                INSERT INTO simulado (id, usuario_id, banca, tamanho, cronometrado, segundos_por_questao, status,
+                                      iniciado_em, finalizado_em, acertos, erros, em_branco)
+                VALUES (?, ?, 'ENEM', 'RAPIDA', TRUE, 150, 'CONCLUIDO', ?, ?, 5, 5, 0)
+                """, id, usuario, quando, quando);
+        List<Questao> todas = questoes.findAll();
+        for (int ordem = 1; ordem <= 10; ordem++) {
+            jdbc.update("""
+                    INSERT INTO simulado_questao (simulado_id, ordem, questao_id, situacao, alternativa_marcada,
+                                                  correta, tempo_segundos, atualizada_em, fora_do_tempo)
+                    VALUES (?, ?, ?, 'RESPONDIDA', 'C', TRUE, ?, ?, FALSE)
+                    """, id, ordem, todas.get(ordem - 1).getId(), segundosPorQuestao, quando);
+        }
+    }
+
+    // Simulado rápido de lc já concluído por outro aluno, direto no banco, finalizado agora.
+    private UUID simuladoDeOutroAluno(int acertos) {
+        UUID id = UUID.randomUUID();
+        Timestamp agora = Timestamp.from(relogio.agora);
+        jdbc.update("""
+                INSERT INTO simulado (id, usuario_id, banca, tamanho, cronometrado, status, iniciado_em,
+                                      finalizado_em, acertos, erros, em_branco)
+                VALUES (?, ?, 'ENEM', 'RAPIDA', FALSE, 'CONCLUIDO', ?, ?, ?, ?, 0)
+                """, id, UUID.randomUUID(), agora, agora, acertos, 10 - acertos);
+        return id;
+    }
 
     // Cronometrado sem tempo informado usa o padrão de 150 s.
     private ResultActions criar(String tamanho, String areas, boolean cronometrado) throws Exception {
