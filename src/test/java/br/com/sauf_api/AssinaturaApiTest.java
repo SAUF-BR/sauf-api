@@ -13,26 +13,33 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.sauf_api.assinatura.Assinatura;
 import br.com.sauf_api.assinatura.AssinaturaRepository;
 import br.com.sauf_api.assinatura.Plano;
-import br.com.sauf_api.comum.UsuarioLogado;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import br.com.sauf_api.auth.TokenService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@AutoConfigureMockMvc
 @Transactional
 class AssinaturaApiTest {
 
-    @Autowired MockMvc mvc;
+    @Autowired WebApplicationContext contexto;
+    @Autowired TokenService tokens;
+    MockMvc mvc;
+
+    @BeforeEach
+    void entrar() {
+        mvc = Sessao.mvcLogado(contexto, tokens);
+    }
     @Autowired AssinaturaRepository assinaturas;
 
     @Test
@@ -71,7 +78,7 @@ class AssinaturaApiTest {
 
     @Test
     void trocarDePlanoMantemADataDeRenovacao() throws Exception {
-        assinaturas.save(new Assinatura(UsuarioLogado.PROVISORIO, Plano.BASIC, hoje().plusDays(10)));
+        assinaturas.save(new Assinatura(Sessao.USUARIO_TESTE, Plano.BASIC, hoje().plusDays(10)));
 
         assinar("premium")
                 .andExpect(status().isOk())
@@ -119,7 +126,7 @@ class AssinaturaApiTest {
 
     @Test
     void assinaturaVencidaContaComoSemAssinatura() throws Exception {
-        assinaturas.save(new Assinatura(UsuarioLogado.PROVISORIO, Plano.PLUS, hoje().minusDays(1)));
+        assinaturas.save(new Assinatura(Sessao.USUARIO_TESTE, Plano.PLUS, hoje().minusDays(1)));
 
         mvc.perform(get("/api/v1/assinatura"))
                 .andExpect(status().isNoContent());
