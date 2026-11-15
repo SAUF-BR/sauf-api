@@ -37,9 +37,6 @@ public class SimuladoService {
     static final int SEGUNDOS_POR_QUESTAO_MAXIMO = 600;
     static final int SEGUNDOS_POR_QUESTAO_PASSO = 30;
 
-    // Regra da nota (D-86): resposta fora do tempo conta normal; com false, ela vira erro na correção.
-    static final boolean FORA_DO_TEMPO_CONTA_NA_NOTA = true;
-
     private final SimuladoRepository simulados;
     private final SimuladoQuestaoRepository itens;
     private final QuestaoRepository questoes;
@@ -107,13 +104,9 @@ public class SimuladoService {
         validarAlternativa(item, request);
 
         // O app manda o total acumulado; reenvios fora de ordem não podem diminuir o tempo.
+        // O tempo por questão é só referência (D-95): passar dele não muda nada na resposta.
         int tempo = Math.max(item.getTempoSegundos(), request.tempoSegundos());
-        // Só a resposta nova dada depois do limite fica fora do tempo; reenviar a mesma não marca.
-        boolean respostaNova = request.situacao() == SituacaoQuestao.RESPONDIDA
-                && (item.getSituacao() != SituacaoQuestao.RESPONDIDA
-                        || !request.alternativa().equals(item.getAlternativaMarcada()));
-        boolean foraDoTempo = respostaNova && simulado.isCronometrado() && tempo >= simulado.getSegundosPorQuestao();
-        item.registrar(request.situacao(), request.alternativa(), tempo, foraDoTempo, clock.instant());
+        item.registrar(request.situacao(), request.alternativa(), tempo, clock.instant());
         return QuestaoSimulado.de(item);
     }
 
@@ -122,7 +115,7 @@ public class SimuladoService {
         Simulado simulado = buscar(usuarioId, id);
         if (!simulado.concluido()) {
             List<SimuladoQuestao> lista = simulado.questoesEmOrdem();
-            lista.forEach(q -> q.encerrar(FORA_DO_TEMPO_CONTA_NA_NOTA));
+            lista.forEach(SimuladoQuestao::encerrar);
             simulado.concluir(
                     clock.instant(),
                     contar(lista, ResultadoQuestao.ACERTO),
@@ -147,11 +140,12 @@ public class SimuladoService {
         if (!origem.concluido()) {
             throw new AcaoNaoPermitidaException("Finalize o simulado antes de refazer os erros");
         }
+        // Erradas e em branco (escolhidas ou sem resposta), na ordem original (D-96)
         List<SimuladoQuestao> erradas = origem.questoesEmOrdem().stream()
-                .filter(q -> q.resultado() == ResultadoQuestao.ERRO)
+                .filter(q -> q.resultado() != ResultadoQuestao.ACERTO)
                 .toList();
         if (erradas.isEmpty()) {
-            throw new AcaoNaoPermitidaException("Este simulado não teve erros para refazer");
+            throw new AcaoNaoPermitidaException("Este simulado não teve erros nem questões em branco para refazer");
         }
         Set<AreaQuestao> areas = EnumSet.noneOf(AreaQuestao.class);
         erradas.forEach(q -> areas.add(q.getQuestao().getArea()));
@@ -286,7 +280,7 @@ public class SimuladoService {
                     .findById(simulado.getOrigemId())
                     .map(this::titulo)
                     .orElse("Simulado ENEM");
-            return "Refazer erros · " + origem;
+            return "Refazer erros e em branco · " + origem;
         }
         List<AreaQuestao> areas = simulado.areasEmOrdem();
         if (areas.size() == AreaQuestao.values().length) {

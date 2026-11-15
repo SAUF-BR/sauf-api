@@ -336,47 +336,32 @@ class SimuladosApiTest {
     }
 
     @Test
-    void respostaDepoisDoLimiteFicaForaDoTempo() throws Exception {
+    void passarDoTempoDeReferenciaNaoMudaAResposta() throws Exception {
         UUID id = idDe(criar("rapida", "[\"lc\"]", true, 90));
 
-        responder(id, 1, CERTA, "respondida", 89)
-                .andExpect(jsonPath("$.situacao").value("respondida"))
-                .andExpect(jsonPath("$.foraDoTempo").value(false));
-        // reenviar a mesma resposta depois do limite não muda nada
-        responder(id, 1, CERTA, "respondida", 120).andExpect(jsonPath("$.foraDoTempo").value(false));
-        // trocar a resposta depois do limite marca
-        responder(id, 1, ERRADA, "respondida", 130).andExpect(jsonPath("$.foraDoTempo").value(true));
-        // e a marca fica, mesmo voltando para a resposta de antes
-        responder(id, 1, CERTA, "respondida", 140)
-                .andExpect(jsonPath("$.alternativaMarcada").value(CERTA))
-                .andExpect(jsonPath("$.foraDoTempo").value(true));
+        responder(id, 1, CERTA, "respondida", 89).andExpect(jsonPath("$.situacao").value("respondida"));
+        // depois do limite a resposta continua aceita e sem marca nenhuma (D-95)
+        responder(id, 1, ERRADA, "respondida", 130)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alternativaMarcada").value(ERRADA))
+                .andExpect(jsonPath("$.foraDoTempo").doesNotExist());
 
-        // esgotou sem resposta: continua pendente, aceita resposta e guarda o tempo real
+        // passou do limite sem resposta: continua pendente e guarda o tempo real
         responder(id, 2, null, "pendente", 400)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.situacao").value("pendente"))
-                .andExpect(jsonPath("$.foraDoTempo").value(false))
                 .andExpect(jsonPath("$.tempoSegundos").value(400));
         responder(id, 2, CERTA, "respondida", 410)
                 .andExpect(jsonPath("$.situacao").value("respondida"))
                 .andExpect(jsonPath("$.alternativaMarcada").value(CERTA))
-                .andExpect(jsonPath("$.foraDoTempo").value(true))
                 .andExpect(jsonPath("$.tempoSegundos").value(410));
-
-        responder(id, 3, null, "em_branco", 200).andExpect(jsonPath("$.foraDoTempo").value(false));
-
-        mvc.perform(get("/api/v1/simulados/{id}", id))
-                .andExpect(jsonPath("$.questoes[0].foraDoTempo").value(true))
-                .andExpect(jsonPath("$.questoes[3].foraDoTempo").value(false));
     }
 
     @Test
     void semCronometroNaoHaLimiteEOTempoAcumuladoGuardaOMaior() throws Exception {
         UUID id = idDe(criar("rapida", "[\"lc\"]", false));
 
-        responder(id, 1, CERTA, "respondida", 400)
-                .andExpect(jsonPath("$.situacao").value("respondida"))
-                .andExpect(jsonPath("$.foraDoTempo").value(false));
+        responder(id, 1, CERTA, "respondida", 400).andExpect(jsonPath("$.situacao").value("respondida"));
         responder(id, 1, CERTA, "respondida", 380)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tempoSegundos").value(400));
@@ -407,7 +392,7 @@ class SimuladosApiTest {
                 .andExpect(jsonPath("$.acertos").value(4))
                 .andExpect(jsonPath("$.erros").value(2))
                 .andExpect(jsonPath("$.emBranco").value(4))
-                .andExpect(jsonPath("$.respondidasForaDoTempo").value(0))
+                .andExpect(jsonPath("$.respondidasForaDoTempo").doesNotExist())
                 .andExpect(jsonPath("$.porcentagemAcerto").value(40.0))
                 .andExpect(jsonPath("$.duracaoSegundos").value(4 * 20 + 2 * 30 + 5))
                 .andExpect(jsonPath("$.finalizadoEm").value("2026-11-13T16:00:00Z"))
@@ -421,9 +406,10 @@ class SimuladosApiTest {
                 .andExpect(jsonPath("$.questoes[4].resultado").value("erro"))
                 .andExpect(jsonPath("$.questoes[4].alternativaMarcada").value(ERRADA))
                 .andExpect(jsonPath("$.questoes[6].resultado").value("em_branco"))
+                .andExpect(jsonPath("$.questoes[6].deixadaEmBranco").value(true))
                 .andExpect(jsonPath("$.questoes[9].resultado").value("em_branco"))
-                .andExpect(jsonPath("$.questoes[9].tempoEsgotado").value(false))
-                .andExpect(jsonPath("$.questoes[9].foraDoTempo").value(false))
+                .andExpect(jsonPath("$.questoes[9].deixadaEmBranco").value(false))
+                .andExpect(jsonPath("$.questoes[4].deixadaEmBranco").value(false))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -445,12 +431,14 @@ class SimuladosApiTest {
 
         mvc.perform(get("/api/v1/simulados/{id}", id))
                 .andExpect(jsonPath("$.status").value("concluido"))
-                .andExpect(jsonPath("$.questoes[9].situacao").value("em_branco"));
+                // a pendente continua pendente; em branco é só a escolhida (D-96)
+                .andExpect(jsonPath("$.questoes[6].situacao").value("em_branco"))
+                .andExpect(jsonPath("$.questoes[9].situacao").value("pendente"));
         responder(id, 8, CERTA, "respondida", 10).andExpect(status().isConflict());
     }
 
     @Test
-    void respostaForaDoTempoContaNaNotaEEsgotadaSemRespostaFicaEmBranco() throws Exception {
+    void respostaDepoisDoTempoContaNormalESemRespostaFicaEmBranco() throws Exception {
         UUID id = idDe(criar("rapida", "[\"lc\"]", true));
         responder(id, 1, CERTA, "respondida", 200);
         responder(id, 2, CERTA, "respondida", 20);
@@ -461,29 +449,24 @@ class SimuladosApiTest {
                 .andExpect(jsonPath("$.acertos").value(2))
                 .andExpect(jsonPath("$.erros").value(1))
                 .andExpect(jsonPath("$.emBranco").value(7))
-                .andExpect(jsonPath("$.respondidasForaDoTempo").value(2))
                 .andExpect(jsonPath("$.porcentagemAcerto").value(20.0))
                 .andExpect(jsonPath("$.questoes[0].resultado").value("acerto"))
-                .andExpect(jsonPath("$.questoes[0].foraDoTempo").value(true))
-                .andExpect(jsonPath("$.questoes[0].tempoEsgotado").value(true))
-                .andExpect(jsonPath("$.questoes[1].foraDoTempo").value(false))
-                .andExpect(jsonPath("$.questoes[1].tempoEsgotado").value(false))
+                .andExpect(jsonPath("$.questoes[0].foraDoTempo").doesNotExist())
+                .andExpect(jsonPath("$.questoes[0].tempoEsgotado").doesNotExist())
                 .andExpect(jsonPath("$.questoes[2].resultado").value("erro"))
                 .andExpect(jsonPath("$.questoes[3].resultado").value("em_branco"))
-                .andExpect(jsonPath("$.questoes[3].tempoEsgotado").value(true))
-                .andExpect(jsonPath("$.questoes[3].foraDoTempo").value(false))
+                .andExpect(jsonPath("$.questoes[3].deixadaEmBranco").value(false))
                 .andExpect(jsonPath("$.questoes[3].alternativaMarcada").isEmpty())
                 .andExpect(jsonPath("$.questoes[3].alternativaCorreta").value(CERTA));
 
         mvc.perform(get("/api/v1/simulados"))
-                .andExpect(jsonPath("$.content[0].respondidasForaDoTempo").value(2))
                 .andExpect(jsonPath("$.content[0].segundosPorQuestao").value(150));
     }
 
     // ---------- refazer erros ----------
 
     @Test
-    void refazerErrosCriaSimuladoSoComAsErradas() throws Exception {
+    void refazerErrosLevaAsErradasEAsEmBranco() throws Exception {
         UUID id = idDe(criar("media", "[\"lc\",\"mt\"]", true, 120));
         responder(id, 1, CERTA, "respondida", 10);
         responder(id, 2, ERRADA, "respondida", 10);
@@ -493,8 +476,9 @@ class SimuladosApiTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        List<Integer> numeros = JsonPath.read(revisao, "$.questoes[?(@.resultado == 'erro')].numero");
-        assertThat(numeros).hasSize(2);
+        // 2 erradas, 1 deixada em branco e 16 sem resposta (D-96)
+        List<Integer> numeros = JsonPath.read(revisao, "$.questoes[?(@.resultado != 'acerto')].numero");
+        assertThat(numeros).hasSize(19);
 
         relogio.agora = Instant.parse("2026-11-13T18:00:00Z");
         String novo = mvc.perform(post("/api/v1/simulados/{id}/refazer-erros", id))
@@ -503,8 +487,8 @@ class SimuladosApiTest {
                 .andExpect(jsonPath("$.cronometrado").value(true))
                 .andExpect(jsonPath("$.segundosPorQuestao").value(120))
                 .andExpect(jsonPath("$.status").value("em_andamento"))
-                .andExpect(jsonPath("$.titulo").value("Refazer erros · Simulado ENEM · Linguagens e Matemática"))
-                .andExpect(jsonPath("$.totalQuestoes").value(2))
+                .andExpect(jsonPath("$.titulo").value("Refazer erros e em branco · Simulado ENEM · Linguagens e Matemática"))
+                .andExpect(jsonPath("$.totalQuestoes").value(19))
                 .andExpect(jsonPath("$.questoes[0].ordem").value(1))
                 .andExpect(jsonPath("$.questoes[1].ordem").value(2))
                 .andExpect(jsonPath("$.questoes[0].situacao").value("pendente"))
@@ -521,7 +505,10 @@ class SimuladosApiTest {
         UUID id = idDe(criar("rapida", "[\"lc\"]", false));
         mvc.perform(post("/api/v1/simulados/{id}/refazer-erros", id)).andExpect(status().isConflict());
 
-        responder(id, 1, CERTA, "respondida", 10);
+        // só acertos: nada para refazer
+        for (int ordem = 1; ordem <= 10; ordem++) {
+            responder(id, ordem, CERTA, "respondida", 10);
+        }
         mvc.perform(post("/api/v1/simulados/{id}/finalizar", id));
         mvc.perform(post("/api/v1/simulados/{id}/refazer-erros", id)).andExpect(status().isConflict());
         mvc.perform(post("/api/v1/simulados/{id}/refazer-erros", UUID.randomUUID()))
@@ -595,7 +582,7 @@ class SimuladosApiTest {
                 .andExpect(jsonPath("$.content[0].segundosPorQuestao").isEmpty())
                 .andExpect(jsonPath("$.content[0].totalQuestoes").value(10))
                 .andExpect(jsonPath("$.content[0].respondidas").value(6))
-                .andExpect(jsonPath("$.content[0].respondidasForaDoTempo").value(0))
+                .andExpect(jsonPath("$.content[0].respondidasForaDoTempo").doesNotExist())
                 .andExpect(jsonPath("$.content[0].acertos").value(5))
                 .andExpect(jsonPath("$.content[0].erros").value(1))
                 .andExpect(jsonPath("$.content[0].emBranco").value(4))

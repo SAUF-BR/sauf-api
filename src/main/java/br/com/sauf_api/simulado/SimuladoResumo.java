@@ -19,7 +19,6 @@ public record SimuladoResumo(
         Instant finalizadoEm,
         int totalQuestoes,
         int respondidas,
-        int respondidasForaDoTempo,
         Integer acertos,
         Integer erros,
         Integer emBranco,
@@ -45,7 +44,6 @@ public record SimuladoResumo(
                 (int) itens.stream()
                         .filter(q -> q.getSituacao() == SituacaoQuestao.RESPONDIDA)
                         .count(),
-                (int) itens.stream().filter(SimuladoQuestao::respondidaForaDoTempo).count(),
                 s.getAcertos(),
                 s.getErros(),
                 s.getEmBranco(),

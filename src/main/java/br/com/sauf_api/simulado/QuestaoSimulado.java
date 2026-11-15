@@ -16,8 +16,7 @@ public record QuestaoSimulado(
         List<AlternativaSimulado> alternativas,
         SituacaoQuestao situacao,
         String alternativaMarcada,
-        int tempoSegundos,
-        boolean foraDoTempo) {
+        int tempoSegundos) {
 
     static QuestaoSimulado de(SimuladoQuestao sq) {
         Questao q = sq.getQuestao();
@@ -31,8 +30,7 @@ public record QuestaoSimulado(
                 alternativas(q),
                 sq.getSituacao(),
                 sq.getAlternativaMarcada(),
-                sq.getTempoSegundos(),
-                sq.respondidaForaDoTempo());
+                sq.getTempoSegundos());
     }
 
     static List<AlternativaSimulado> alternativas(Questao q) {

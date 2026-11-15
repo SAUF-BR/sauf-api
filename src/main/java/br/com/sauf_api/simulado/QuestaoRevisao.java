@@ -2,6 +2,7 @@ package br.com.sauf_api.simulado;
 
 import br.com.sauf_api.questao.AreaQuestao;
 import br.com.sauf_api.questao.Questao;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 /** Questão na revisão: aqui, e só aqui, o gabarito aparece. */
@@ -14,8 +15,8 @@ public record QuestaoRevisao(
         String comando,
         List<AlternativaSimulado> alternativas,
         ResultadoQuestao resultado,
-        boolean tempoEsgotado,
-        boolean foraDoTempo,
+        @Schema(description = "true quando o aluno clicou em \"Deixar em branco\"; false se só ficou sem resposta (D-96)")
+        boolean deixadaEmBranco,
         String alternativaMarcada,
         String alternativaCorreta,
         int tempoSegundos) {
@@ -31,8 +32,7 @@ public record QuestaoRevisao(
                 q.getComando(),
                 QuestaoSimulado.alternativas(q),
                 sq.resultado(),
-                sq.tempoEsgotado(),
-                sq.respondidaForaDoTempo(),
+                sq.deixadaEmBranco(),
                 sq.getAlternativaMarcada(),
                 sq.rotuloCorreto(),
                 sq.getTempoSegundos());
