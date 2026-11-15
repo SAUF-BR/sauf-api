@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.sauf_api.auth.TokenService;
 import br.com.sauf_api.area.Area;
 import br.com.sauf_api.area.AreaRepository;
 import br.com.sauf_api.curso.Curso;
@@ -26,21 +27,22 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Testes dos cursos favoritos (Meus favoritos - Cursos). */
 @SpringBootTest
 @ActiveProfiles("test")
-@AutoConfigureMockMvc
 @Transactional
 class FavoritoCursoApiTest {
 
     static final String ROTA = "/api/v1/favoritos/cursos";
 
-    @Autowired MockMvc mvc;
+    @Autowired WebApplicationContext contexto;
+    @Autowired TokenService tokens;
+    MockMvc mvc;
     @Autowired AreaRepository areas;
     @Autowired InstituicaoRepository instituicoes;
     @Autowired CursoRepository cursos;
@@ -51,6 +53,7 @@ class FavoritoCursoApiTest {
 
     @BeforeEach
     void dados() {
+        mvc = Sessao.mvcLogado(contexto, tokens);
         uem = instituicao(57, "UEM", TipoInstituicao.PUBLICA);
         Curso biomedicina = cursos.save(new Curso("Biomedicina", area("09")));
         biomedicinaUem = oferta(biomedicina, uem, "uem:biomedicina:integral");

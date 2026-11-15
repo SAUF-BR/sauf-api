@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.sauf_api.comum.UsuarioLogado;
+import br.com.sauf_api.auth.TokenService;
 import br.com.sauf_api.questao.Alternativa;
 import br.com.sauf_api.questao.AreaQuestao;
 import br.com.sauf_api.questao.Banca;
@@ -34,19 +34,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@AutoConfigureMockMvc
 @Transactional
 class SimuladosApiTest {
 
@@ -83,7 +82,9 @@ class SimuladosApiTest {
     static final String CERTA = "C";
     static final String ERRADA = "A";
 
-    @Autowired MockMvc mvc;
+    @Autowired WebApplicationContext contexto;
+    @Autowired TokenService tokens;
+    MockMvc mvc;
     @Autowired ProvaRepository provas;
     @Autowired QuestaoRepository questoes;
     @Autowired RelogioDeTeste relogio;
@@ -95,6 +96,7 @@ class SimuladosApiTest {
 
     @BeforeEach
     void preparar() {
+        mvc = Sessao.mvcLogado(contexto, tokens);
         relogio.agora = Instant.parse("2026-11-13T15:00:00Z");
         prova = new Prova(Banca.ENEM, 2024, "D1", "LARANJA");
         prova.atualizar("https://exemplo.test", "ENEM 2024 (INEP)");
@@ -944,7 +946,7 @@ class SimuladosApiTest {
         }
         mvc.perform(post("/api/v1/simulados/{id}/finalizar", id)).andExpect(status().isOk());
         // Em outubro: o aluno 6 com 900 s e o aluno de teste com 300 s
-        simuladoComTempo(UsuarioLogado.PROVISORIO, 30, Instant.parse("2026-10-20T12:00:00Z"));
+        simuladoComTempo(Sessao.USUARIO_TESTE, 30, Instant.parse("2026-10-20T12:00:00Z"));
 
         mvc.perform(get("/api/v1/simulados/ranking"))
                 .andExpect(jsonPath("$.totalParticipantes").value(6))
@@ -975,7 +977,7 @@ class SimuladosApiTest {
             simuladoComTempo(aluno(doParana[i]), 10 * (i + 1), hoje);
         }
         simuladoComTempo(aluno(6), 150, hoje);
-        simuladoComTempo(UsuarioLogado.PROVISORIO, 105, hoje); // 1050 s, do PR
+        simuladoComTempo(Sessao.USUARIO_TESTE, 105, hoje); // 1050 s, do PR
 
         // 18 do PR + o aluno de teste = 19: ainda sem percentil
         mvc.perform(get("/api/v1/simulados/ranking"))
