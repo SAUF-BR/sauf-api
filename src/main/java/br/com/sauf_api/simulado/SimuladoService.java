@@ -15,6 +15,7 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SimuladoService {
 
     public static final int SEGUNDOS_POR_QUESTAO_PADRAO = 150;
+    public static final int MAXIMO_QUESTOES = 100;
     public static final List<Integer> TEMPOS_POR_QUESTAO = List.of(90, 120, 150, 180, 240);
     static final int SEGUNDOS_POR_QUESTAO_MINIMO = 60;
     static final int SEGUNDOS_POR_QUESTAO_MAXIMO = 600;
@@ -56,6 +58,7 @@ public class SimuladoService {
                 Arrays.stream(TamanhoSimulado.values())
                         .map(t -> new OpcoesSimulado.TamanhoOpcao(t, t.questoes()))
                         .toList(),
+                MAXIMO_QUESTOES,
                 SEGUNDOS_POR_QUESTAO_PADRAO,
                 TEMPOS_POR_QUESTAO,
                 List.of(new OpcoesSimulado.BancaOpcao(Banca.ENEM, "ENEM")),
@@ -72,14 +75,18 @@ public class SimuladoService {
         }
         boolean cronometrado = request.cronometrado();
         Integer segundosPorQuestao = cronometrado ? validarTempo(request.segundosPorQuestao()) : null;
-        Set<AreaQuestao> areas = EnumSet.copyOf(request.areas());
-        List<Questao> sorteadas = sortear(usuarioId, request.banca(), areas, request.tamanho().questoes());
+        Map<AreaQuestao, Integer> porArea = distribuir(request);
+        List<Questao> sorteadas = sortear(usuarioId, request.banca(), porArea);
+        // Só o tamanho pronto fica gravado; o personalizado fica nulo, como o refazer (D-97)
+        TamanhoSimulado tamanho = request.quantidades() == null && request.quantidade() == null
+                ? request.tamanho()
+                : null;
 
         Simulado simulado = new Simulado(
                 usuarioId,
                 request.banca(),
-                request.tamanho(),
-                areas,
+                tamanho,
+                porArea.keySet(),
                 cronometrado,
                 segundosPorQuestao,
                 null,
@@ -205,14 +212,76 @@ public class SimuladoService {
         return SimuladoDetalhe.de(simulado, titulo(simulado));
     }
 
-    // Divide igual entre as áreas (o resto vai para as primeiras) e prefere o que o usuário nunca fez.
-    private List<Questao> sortear(UUID usuarioId, Banca banca, Set<AreaQuestao> escolhidas, int total) {
-        List<AreaQuestao> areas = escolhidas.stream().sorted().toList();
+    // Quantas questões de cada área, só com as áreas que entram (na ordem lc, ch, cn, mt)
+    private Map<AreaQuestao, Integer> distribuir(CriarSimuladoRequest request) {
+        if (request.quantidades() != null) {
+            return porAreaEscolhida(request.banca(), request.quantidades());
+        }
+        if (request.areas() == null || request.areas().isEmpty()) {
+            throw new DadosInvalidosException("areas", "Escolha ao menos uma área");
+        }
+        int total;
+        if (request.quantidade() != null) {
+            total = request.quantidade();
+        } else if (request.tamanho() != null) {
+            total = request.tamanho().questoes();
+        } else {
+            throw new DadosInvalidosException("tamanho", "Escolha o tamanho do simulado");
+        }
+        // Divide igual entre as áreas e o resto vai para as primeiras (D-81)
+        List<AreaQuestao> areas = EnumSet.copyOf(request.areas()).stream().sorted().toList();
+        Map<AreaQuestao, Integer> porArea = new EnumMap<>(AreaQuestao.class);
+        for (int i = 0; i < areas.size(); i++) {
+            porArea.put(areas.get(i), total / areas.size() + (i < total % areas.size() ? 1 : 0));
+        }
+        return porArea;
+    }
+
+    // Quantidades escolhidas por área (D-97): áreas conhecidas, nada negativo, total de 1 a 100 e
+    // cada área até o que tem disponível. Área com 0 fica de fora.
+    private Map<AreaQuestao, Integer> porAreaEscolhida(Banca banca, Map<String, Integer> quantidades) {
+        Map<AreaQuestao, Integer> porArea = new EnumMap<>(AreaQuestao.class);
+        int total = 0;
+        for (Map.Entry<String, Integer> item : quantidades.entrySet()) {
+            AreaQuestao area = Arrays.stream(AreaQuestao.values())
+                    .filter(a -> a.valor().equalsIgnoreCase(item.getKey()))
+                    .findFirst()
+                    .orElseThrow(() -> new DadosInvalidosException(
+                            "quantidades", "Área desconhecida: " + item.getKey()));
+            Integer quantidade = item.getValue();
+            if (quantidade == null || quantidade < 0) {
+                throw new DadosInvalidosException(
+                        "quantidades." + area.valor(), "Informe de 0 em diante para " + area.nome());
+            }
+            if (quantidade == 0) {
+                continue;
+            }
+            long disponiveis = questoes.contarSorteaveis(banca, area, StatusQuestao.DISPONIVEL, Lingua.ESPANHOL);
+            if (quantidade > disponiveis) {
+                throw new DadosInvalidosException(
+                        "quantidades." + area.valor(),
+                        area.nome() + " tem " + disponiveis + " questões disponíveis");
+            }
+            porArea.put(area, quantidade);
+            total += quantidade;
+        }
+        if (total == 0) {
+            throw new DadosInvalidosException("quantidades", "Escolha ao menos 1 questão");
+        }
+        if (total > MAXIMO_QUESTOES) {
+            throw new DadosInvalidosException(
+                    "quantidades", "O simulado pode ter até " + MAXIMO_QUESTOES + " questões (você escolheu " + total + ")");
+        }
+        return porArea;
+    }
+
+    // Sorteia a quantidade de cada área sem repetir questão e prefere o que o usuário nunca fez (D-81).
+    private List<Questao> sortear(UUID usuarioId, Banca banca, Map<AreaQuestao, Integer> porArea) {
         Set<UUID> jaFeitas = new HashSet<>(itens.idsDoUsuario(usuarioId));
         List<Questao> sorteadas = new ArrayList<>();
-        for (int i = 0; i < areas.size(); i++) {
-            AreaQuestao area = areas.get(i);
-            int quantidade = total / areas.size() + (i < total % areas.size() ? 1 : 0);
+        for (Map.Entry<AreaQuestao, Integer> item : porArea.entrySet()) {
+            AreaQuestao area = item.getKey();
+            int quantidade = item.getValue();
 
             List<UUID> inedidas = new ArrayList<>();
             List<UUID> repetidas = new ArrayList<>();

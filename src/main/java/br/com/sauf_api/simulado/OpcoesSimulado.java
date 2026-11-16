@@ -6,6 +6,8 @@ import java.util.List;
 
 public record OpcoesSimulado(
         List<TamanhoOpcao> tamanhos,
+        // Limite do total num simulado personalizado (D-97)
+        int maximoQuestoes,
         int segundosPorQuestao,
         List<Integer> temposPorQuestao,
         List<BancaOpcao> bancas,

@@ -125,6 +125,7 @@ class SimuladosApiTest {
                 .andExpect(jsonPath("$.tamanhos[1].questoes").value(20))
                 .andExpect(jsonPath("$.tamanhos[2].id").value("longa"))
                 .andExpect(jsonPath("$.tamanhos[2].questoes").value(30))
+                .andExpect(jsonPath("$.maximoQuestoes").value(100))
                 .andExpect(jsonPath("$.segundosPorQuestao").value(150))
                 .andExpect(jsonPath("$.temposPorQuestao.length()").value(5))
                 .andExpect(jsonPath("$.temposPorQuestao[0]").value(90))
@@ -263,6 +264,125 @@ class SimuladosApiTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.fields.segundosPorQuestao").exists());
         }
+    }
+
+    // ---------- personalizado (D-97) ----------
+
+    @Test
+    void quantidadeLivreDe100DivideEntreAsAreasSemTamanho() throws Exception {
+        for (AreaQuestao area : AreaQuestao.values()) {
+            semear(area, 25, StatusQuestao.DISPONIVEL, false, null);
+        }
+
+        String corpo = criarCom("\"quantidade\": 100, \"areas\": [\"lc\", \"ch\", \"cn\", \"mt\"]")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totalQuestoes").value(100))
+                .andExpect(jsonPath("$.tamanho").isEmpty())
+                .andReturn().getResponse().getContentAsString();
+        for (String area : List.of("lc", "ch", "cn", "mt")) {
+            assertThat(contarDaArea(corpo, area)).as(area).isEqualTo(25);
+        }
+        List<Integer> numeros = JsonPath.read(corpo, "$.questoes[*].numero");
+        assertThat(new HashSet<>(numeros)).hasSize(100);
+    }
+
+    @Test
+    void quantidadeLivreDe1EDivisaoComResto() throws Exception {
+        criarCom("\"quantidade\": 1, \"areas\": [\"mt\"]")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totalQuestoes").value(1))
+                .andExpect(jsonPath("$.questoes[0].area").value("mt"));
+        // 7 em 2 áreas: o resto vai para a primeira (lc 4, mt 3)
+        String corpo = criarCom("\"quantidade\": 7, \"areas\": [\"mt\", \"lc\"]")
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(contarDaArea(corpo, "lc")).isEqualTo(4);
+        assertThat(contarDaArea(corpo, "mt")).isEqualTo(3);
+    }
+
+    @Test
+    void recusaQuantidadeLivreForaDe1A100() throws Exception {
+        criarCom("\"quantidade\": 101, \"areas\": [\"lc\"]")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.quantidade").value("O simulado pode ter até 100 questões"));
+        criarCom("\"quantidade\": 0, \"areas\": [\"lc\"]")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.quantidade").exists());
+        criarCom("\"areas\": [\"lc\"]")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.tamanho").value("Escolha o tamanho do simulado"));
+    }
+
+    @Test
+    void quantidadesPorAreaSorteiamExatamenteOEscolhido() throws Exception {
+        String corpo = criarCom("\"quantidades\": {\"lc\": 5, \"ch\": 0, \"cn\": 10, \"mt\": 3}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totalQuestoes").value(18))
+                .andExpect(jsonPath("$.tamanho").isEmpty())
+                .andExpect(jsonPath("$.areas.length()").value(3))
+                .andExpect(jsonPath("$.areas[0]").value("lc"))
+                .andExpect(jsonPath("$.areas[1]").value("cn"))
+                .andExpect(jsonPath("$.areas[2]").value("mt"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(contarDaArea(corpo, "lc")).isEqualTo(5);
+        assertThat(contarDaArea(corpo, "ch")).isZero();
+        assertThat(contarDaArea(corpo, "cn")).isEqualTo(10);
+        assertThat(contarDaArea(corpo, "mt")).isEqualTo(3);
+
+        // a lista devolve a distribuição para repetir o simulado
+        mvc.perform(get("/api/v1/simulados"))
+                .andExpect(jsonPath("$.content[0].questoesPorArea.lc").value(5))
+                .andExpect(jsonPath("$.content[0].questoesPorArea.cn").value(10))
+                .andExpect(jsonPath("$.content[0].questoesPorArea.mt").value(3))
+                .andExpect(jsonPath("$.content[0].questoesPorArea.ch").doesNotExist());
+    }
+
+    @Test
+    void quantidadesPorAreaTemPrecedenciaSobreTamanhoEAreas() throws Exception {
+        criarCom("\"tamanho\": \"longa\", \"quantidade\": 50, \"areas\": [\"lc\"], \"quantidades\": {\"ch\": 2}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totalQuestoes").value(2))
+                .andExpect(jsonPath("$.areas[0]").value("ch"))
+                .andExpect(jsonPath("$.tamanho").isEmpty());
+    }
+
+    @Test
+    void recusaQuantidadesPorAreaInvalidas() throws Exception {
+        // lc tem 12 disponíveis
+        criarCom("\"quantidades\": {\"lc\": 13}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields['quantidades.lc']").value("Linguagens tem 12 questões disponíveis"));
+        criarCom("\"quantidades\": {\"lc\": 0, \"mt\": 0}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.quantidades").value("Escolha ao menos 1 questão"));
+        criarCom("\"quantidades\": {}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.quantidades").value("Escolha ao menos 1 questão"));
+        criarCom("\"quantidades\": {\"xx\": 3}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.quantidades").value("Área desconhecida: xx"));
+        criarCom("\"quantidades\": {\"lc\": -1}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields['quantidades.lc']").exists());
+
+        for (AreaQuestao area : AreaQuestao.values()) {
+            semear(area, 25, StatusQuestao.DISPONIVEL, false, null);
+        }
+        // cada área cabe (37), mas a soma passa de 100
+        criarCom("\"quantidades\": {\"lc\": 37, \"ch\": 37, \"cn\": 30}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.quantidades").value("O simulado pode ter até 100 questões (você escolheu 104)"));
+        criarCom("\"quantidades\": {\"lc\": 37, \"ch\": 37, \"cn\": 26}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totalQuestoes").value(100));
+    }
+
+    @Test
+    void contratoAntigoComTamanhoContinuaIgual() throws Exception {
+        criar("media", "[\"lc\", \"mt\"]", true)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tamanho").value("media"))
+                .andExpect(jsonPath("$.totalQuestoes").value(20));
     }
 
     @Test
@@ -1024,6 +1144,17 @@ class SimuladosApiTest {
                 .content("""
                         {"banca": "enem", "tamanho": "%s", "areas": %s, "cronometrado": %s, "segundosPorQuestao": %s}
                         """.formatted(tamanho, areas, cronometrado, segundosPorQuestao)));
+    }
+
+    private ResultActions criarCom(String campos) throws Exception {
+        return mvc.perform(post("/api/v1/simulados")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"banca\": \"enem\", \"cronometrado\": false, " + campos + "}"));
+    }
+
+    private static int contarDaArea(String simulado, String area) {
+        List<Object> daArea = JsonPath.read(simulado, "$.questoes[?(@.area == '" + area + "')]");
+        return daArea.size();
     }
 
     private ResultActions responder(UUID id, int ordem, String alternativa, String situacao, int tempo)
