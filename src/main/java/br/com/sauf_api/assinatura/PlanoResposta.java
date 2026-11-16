@@ -5,7 +5,7 @@ import java.util.List;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record PlanoResposta(
-    @Schema(description = "Código do plano: basic, plus ou premium") String id,
+    @Schema(description = "Código do plano: free, basic ou plus") String id,
     String nome,
     BigDecimal precoMensal,
     String descricao,
