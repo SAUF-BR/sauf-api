@@ -39,7 +39,7 @@ docker compose down -v     # apaga o container E os dados (zera o banco)
 
 ### Usuário de homologação
 
-Conta fixa com assinatura **Premium ativa até 31/12/2099** (D-83), para testar as telas de
+Conta fixa com assinatura **Plus ativa até 31/12/2099** (D-83), para testar as telas de
 assinante e o login: e-mail `homologacao@sauf.local`, senha `Homolog@2026` (só de homologação).
 Rodar o script de novo volta a conta ao estado original.
 

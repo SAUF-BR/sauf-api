@@ -14,7 +14,7 @@ import br.com.sauf_api.assinatura.Assinatura;
 import br.com.sauf_api.assinatura.AssinaturaRepository;
 import br.com.sauf_api.assinatura.Plano;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import br.com.sauf_api.auth.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,13 +47,31 @@ class AssinaturaApiTest {
         mvc.perform(get("/api/v1/assinatura/planos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(3)))
-                .andExpect(jsonPath("$[*].id", contains("basic", "plus", "premium")))
-                .andExpect(jsonPath("$[0].precoMensal").value(8.0))
-                .andExpect(jsonPath("$[0].recursos", contains("simulados-enem")))
-                .andExpect(jsonPath("$[0].selo").value(nullValue()))
+                .andExpect(jsonPath("$[*].id", contains("free", "basic", "plus")))
+                .andExpect(jsonPath("$[0].precoMensal").value(0.0))
+                .andExpect(jsonPath("$[0].recursos", contains(
+                        "busca-cursos", "busca-universidades", "teste-vocacional", "calendario", "favoritos")))
+                .andExpect(jsonPath("$[1].precoMensal").value(8.0))
+                .andExpect(jsonPath("$[1].recursos", contains(
+                        "busca-cursos", "busca-universidades", "teste-vocacional", "calendario", "favoritos",
+                        "simulados-enem")))
+                .andExpect(jsonPath("$[1].selo").value(nullValue()))
+                .andExpect(jsonPath("$[2].precoMensal").value(10.0))
                 .andExpect(jsonPath("$[2].selo").value("Completo"))
                 .andExpect(jsonPath("$[2].recursos", contains(
-                        "simulados-enem", "simulados-vestibulares", "dashboard", "timer", "ranking")));
+                        "busca-cursos", "busca-universidades", "teste-vocacional", "calendario", "favoritos",
+                        "simulados-enem", "ranking", "timer", "dashboard")));
+    }
+
+    @Test
+    void assinarOFreeResponde409ENaoGrava() throws Exception {
+        assinar("free")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "O plano Free não precisa ser assinado. Para voltar a ele, cancele a sua assinatura"));
+
+        mvc.perform(get("/api/v1/assinatura"))
+                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -80,9 +98,9 @@ class AssinaturaApiTest {
     void trocarDePlanoMantemADataDeRenovacao() throws Exception {
         assinaturas.save(new Assinatura(Sessao.USUARIO_TESTE, Plano.BASIC, hoje().plusDays(10)));
 
-        assinar("premium")
+        assinar("plus")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.plano").value("premium"))
+                .andExpect(jsonPath("$.plano").value("plus"))
                 .andExpect(jsonPath("$.renovaEm").value(hoje().plusDays(10).toString()));
     }
 
@@ -145,6 +163,6 @@ class AssinaturaApiTest {
     }
 
     private LocalDate hoje() {
-        return LocalDate.now(ZoneOffset.UTC);
+        return LocalDate.now(ZoneId.of("America/Sao_Paulo"));
     }
 }

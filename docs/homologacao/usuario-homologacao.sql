@@ -1,4 +1,4 @@
--- Usuário de homologação (D-83): conta fixa, com assinatura Premium ativa até 31/12/2099,
+-- Usuário de homologação (D-83): conta fixa, com assinatura Plus ativa até 31/12/2099,
 -- para testar as telas de assinante sem os dados vencerem nem mudarem.
 --
 -- Rodar de novo a qualquer momento devolve a conta ao estado original (nome, nota, foto
@@ -31,10 +31,10 @@ ON CONFLICT (id) DO UPDATE SET
 -- Começa sem foto (a foto pode ser testada e é apagada ao rodar de novo)
 DELETE FROM usuario_foto WHERE usuario_id = '0b5e7c1a-4f2d-4c8e-9a6b-3d1f0e2a7c55';
 
--- Uma assinatura só: Premium, ativa, renovando em 31/12/2099 (nunca vence, D-57)
+-- Uma assinatura só: Plus (o plano completo), ativa, renovando em 31/12/2099 (nunca vence, D-57)
 DELETE FROM assinatura WHERE usuario_id = '0b5e7c1a-4f2d-4c8e-9a6b-3d1f0e2a7c55';
 INSERT INTO assinatura (id, usuario_id, plano, status, renova_em, criada_em)
 VALUES ('5c3d9e2b-8a1f-4b7c-b6d4-1e9f2a0c3b77', '0b5e7c1a-4f2d-4c8e-9a6b-3d1f0e2a7c55',
-        'PREMIUM', 'ATIVA', DATE '2099-12-31', TIMESTAMP WITH TIME ZONE '2026-03-10 12:00:00+00');
+        'PLUS', 'ATIVA', DATE '2099-12-31', TIMESTAMP WITH TIME ZONE '2026-03-10 12:00:00+00');
 
 COMMIT;

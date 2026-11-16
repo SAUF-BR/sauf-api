@@ -4,7 +4,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * Ponto único para conferir se o plano do usuário inclui um recurso (ex.: RANKING, só no Premium).
+ * Ponto único para conferir se o plano do usuário inclui um recurso (ex.: RANKING, só no Plus).
  * Provisório até o login (D-55, TR-336): libera tudo, como o UsuarioLogado.
  */
 @Component
