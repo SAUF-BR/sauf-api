@@ -28,10 +28,7 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
-        String recebida = request.getHeader(HEADER);
-        if (chaveEsperada != null
-                && recebida != null
-                && MessageDigest.isEqual(chaveEsperada, recebida.getBytes(StandardCharsets.UTF_8))) {
+        if (chaveValida(request)) {
             return true;
         }
         HttpStatus status = HttpStatus.UNAUTHORIZED;
@@ -43,5 +40,13 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
                 : "Header " + HEADER + " ausente ou inválido";
         json.writeValue(response.getWriter(), new ErroResposta(status.value(), status.getReasonPhrase(), mensagem, Map.of()));
         return false;
+    }
+
+    /** O header X-Api-Key confere com a SAUF_API_KEY (comparação em tempo constante). */
+    public boolean chaveValida(HttpServletRequest request) {
+        String recebida = request.getHeader(HEADER);
+        return chaveEsperada != null
+                && recebida != null
+                && MessageDigest.isEqual(chaveEsperada, recebida.getBytes(StandardCharsets.UTF_8));
     }
 }
