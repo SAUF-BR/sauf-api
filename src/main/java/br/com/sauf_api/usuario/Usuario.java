@@ -2,6 +2,8 @@ package br.com.sauf_api.usuario;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -36,6 +38,11 @@ public class Usuario {
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm;
 
+    // D-107: ADMIN usa as rotas /api/v1/admin/**
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Papel papel = Papel.ESTUDANTE;
+
 
     protected Usuario() {}
 
@@ -63,6 +70,11 @@ public class Usuario {
     public void atualizarPerfil(String nome, BigDecimal notaEnem) {
         this.nome = nome.trim();
         this.notaEnem = notaEnem;
+    }
+
+    /** Pela SAUF_ADMIN_EMAILS (D-107). */
+    public void promoverAAdmin() {
+        this.papel = Papel.ADMIN;
     }
 
     public static String normalizarEmail(String email) {
@@ -100,5 +112,9 @@ public class Usuario {
 
     public Instant getCriadoEm() {
         return criadoEm;
+    }
+
+    public Papel getPapel() {
+        return papel;
     }
 }
