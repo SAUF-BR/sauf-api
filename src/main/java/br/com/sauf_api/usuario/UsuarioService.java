@@ -1,6 +1,7 @@
 package br.com.sauf_api.usuario;
 
 import br.com.sauf_api.comum.RecursoNaoEncontradoException;
+import br.com.sauf_api.comum.TipoImagem;
 import br.com.sauf_api.documento.DocumentosLegaisService;
 import java.io.IOException;
 import java.io.UncheckedIOException;

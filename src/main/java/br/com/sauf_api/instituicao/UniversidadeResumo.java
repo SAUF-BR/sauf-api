@@ -13,12 +13,12 @@ public record UniversidadeResumo(
         TipoInstituicao tipo,
         String cidade,
         String uf,
-        @Schema(description = "Ainda sem fonte de dados; vem null (P-11)") String logoUrl,
+        @Schema(description = "URL completa do logo (Wikimedia Commons, crédito em dados manuais); null sem logo (D-100)") String logoUrl,
         @Schema(description = "IGC faixa (1 a 5) do ano mais recente importado; null quando sem conceito (SC) ou sem IGC (D-49)") Integer notaMec,
         long totalCursos,
         Set<Modalidade> modalidades) {
 
-    public static UniversidadeResumo de(Instituicao i, EstatisticasOfertas.PorInstituicao numeros) {
+    public static UniversidadeResumo de(Instituicao i, EstatisticasOfertas.PorInstituicao numeros, String logoUrl) {
         return new UniversidadeResumo(
                 i.getId(),
                 i.getNome(),
@@ -26,7 +26,7 @@ public record UniversidadeResumo(
                 i.getTipo(),
                 i.getCidade(),
                 i.getUf(),
-                i.getLogoUrl(),
+                logoUrl,
                 i.getNotaMec(),
                 numeros.totalCursos(),
                 numeros.modalidades());

@@ -13,7 +13,7 @@ public record CursoResumo(
         UUID id,
         String nome,
         AreaRef area,
-        @Schema(description = "Ainda sem fonte de dados; vem null (P-11)") String imagemUrl,
+        @Schema(description = "URL completa da imagem: a do curso, se houver, senão a da área Cine (D-101); null sem as duas") String imagemUrl,
         long totalUniversidades,
         Set<Modalidade> modalidades,
         Set<Grau> graus,
@@ -25,12 +25,13 @@ public record CursoResumo(
 
     public record AreaRef(UUID id, String nome) {}
 
-    public static CursoResumo de(Curso c, EstatisticasOfertas.PorCurso numeros, NotasSisu.Media media) {
+    public static CursoResumo de(
+            Curso c, EstatisticasOfertas.PorCurso numeros, NotasSisu.Media media, String imagemDaArea) {
         return new CursoResumo(
                 c.getId(),
                 c.getNome(),
                 c.getArea() == null ? null : new AreaRef(c.getArea().getId(), c.getArea().getNome()),
-                c.getImagemUrl(),
+                c.getImagemUrl() != null ? c.getImagemUrl() : imagemDaArea,
                 numeros.totalUniversidades(),
                 numeros.modalidades(),
                 numeros.graus(),

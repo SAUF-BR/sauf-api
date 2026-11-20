@@ -3,6 +3,7 @@ package br.com.sauf_api.comum;
 import br.com.sauf_api.auth.CredenciaisInvalidasException;
 import br.com.sauf_api.auth.EmailEmUsoException;
 import br.com.sauf_api.documento.DocumentoDesatualizadoException;
+import br.com.sauf_api.ingestao.AreaNaoCadastradaException;
 import br.com.sauf_api.ingestao.InstituicaoNaoCadastradaException;
 import br.com.sauf_api.usuario.FotoInvalidaException;
 import java.util.LinkedHashMap;
@@ -34,8 +35,8 @@ public class TratadorDeErros {
         return responder(HttpStatus.NOT_FOUND, e.getMessage(), Map.of());
     }
 
-    @ExceptionHandler(InstituicaoNaoCadastradaException.class)
-    ResponseEntity<ErroResposta> instituicaoNaoCadastrada(InstituicaoNaoCadastradaException e) {
+    @ExceptionHandler({InstituicaoNaoCadastradaException.class, AreaNaoCadastradaException.class})
+    ResponseEntity<ErroResposta> naoCadastrada(RuntimeException e) {
         return responder(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage(), Map.of());
     }
 
