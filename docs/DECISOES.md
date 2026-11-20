@@ -244,6 +244,13 @@ Implementam a D-55 e a ADR-005 do front. Fecham a P-09 e a P-10.
 | D-106 | **Escrita pelas rotas de admin**: `PUT /api/v1/admin/calendario/eventos/{chave}` cria ou substitui o evento (reenviar igual responde sem `criados` nem `atualizados`; `codigoEmecInstituicao` desconhecido: **422**; `fim` antes do `inicio`, chave ou corpo inválido: **400**) e `DELETE` na mesma rota apaga (**204**; **404** se não existe). Hoje quem envia é o `sauf-scraper calendario` (arquivo `dados/calendario.toml`, ADR-BE-017); as telas de admin virão depois e usam as mesmas rotas. | Mesmo jeito dos dados manuais: o arquivo é a fonte, o envio é idempotente, e as telas futuras não precisam de outra API. |
 | D-107 | **Papel do usuário e acesso de admin.** `usuario.papel` (`ESTUDANTE` por padrão ou `ADMIN`). As rotas **`/api/v1/admin/**`** aceitam a **`X-Api-Key`** (o scraper) **ou** uma sessão de conta **ADMIN** (as telas futuras); sem nenhum dos dois: **401**; logado sem ser admin: **403**. A variável **`SAUF_ADMIN_EMAILS`** (e-mails separados por vírgula, sem diferenciar maiúsculas) promove a conta a ADMIN na primeira vez que ela usa uma rota de admin; tirar o e-mail da lista **não rebaixa** (trocar o papel no banco). Cada ambiente tem a sua lista no próprio `.env`; o repositório só tem um exemplo no `.env.example`. A promoção vai para o log só com o id da conta. | Administrar sem tela de cadastro de admins e sem e-mail de ninguém no código. |
 
+> **Nota (20/11/2026):** por decisão da equipe (prazo apertado), a migration
+> `V2026_11_20_1500__calendario_admin.sql` foi aplicada no Supabase **antes de entrar na `main`**,
+> pela API da branch `TR-343-calendario-admin`, e os 31 eventos do `calendario.toml` foram enviados
+> (Carlos; registro em `sauf-scraper/dados/README.md`, seção 11). Até este PR e o da
+> `TR-343-dados-manuais-ies` entrarem, subir a API da `main` contra o Supabase exige
+> `SPRING_FLYWAY_IGNORE_MIGRATION_PATTERNS='*:missing'` só nesse processo.
+
 ## 3. Estrutura da v1 (implementada)
 
 Primeira versão do código, em `src/main`. Pode mudar com as próximas decisões.
