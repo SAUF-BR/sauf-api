@@ -10,11 +10,11 @@ public class RespostaIngestao {
     private int inativados;
     private final List<String> rejeitados = new ArrayList<>();
 
-    void criado() {
+    public void criado() {
         criados++;
     }
 
-    void atualizado() {
+    public void atualizado() {
         atualizados++;
     }
 
