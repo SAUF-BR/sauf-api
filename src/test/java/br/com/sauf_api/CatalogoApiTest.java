@@ -1,3 +1,4 @@
+
 package br.com.sauf_api;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -114,6 +115,47 @@ class CatalogoApiTest {
     }
 
     @Test
+    void filtraDuracaoMaximaECombinaComArea() throws Exception {
+        mvc.perform(get("/api/v1/cursos")
+                        .param("duracaoSemestres", "8")
+                        .param("area", engenhariaSoftware.getArea().getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Engenharia de Software"))
+                .andExpect(jsonPath("$.content[0].totalUniversidades").value(1))
+                .andExpect(jsonPath("$.content[0].duracaoSemestresMin").value(8))
+                .andExpect(jsonPath("$.content[0].duracaoSemestresMax").value(8));
+    }
+
+    @Test
+    void filtraCursosPelaNotaMaximaDoSisu() throws Exception {
+        // Média de Biomedicina: 705,25.
+        mvc.perform(get("/api/v1/cursos")
+                        .param("notaCorteMax", "710"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Biomedicina"));
+
+        // Biomedicina não deve aparecer, pois sua média é maior que 700.
+        // Engenharia de Software também não possui nota SISU.
+        mvc.perform(get("/api/v1/cursos")
+                        .param("notaCorteMax", "700"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void combinaFiltroSisuComAreaEDuracao() throws Exception {
+        mvc.perform(get("/api/v1/cursos")
+                        .param("area", biomedicina.getArea().getId().toString())
+                        .param("duracaoSemestres", "8")
+                        .param("notaCorteMax", "710"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.content", hasSize(0)));
+    }
+
+    @Test
     void listaOfertasDoCursoComLinkDoSite() throws Exception {
         mvc.perform(get("/api/v1/cursos/{id}/ofertas", engenhariaSoftware.getId()))
                 .andExpect(status().isOk())
@@ -157,11 +199,11 @@ class CatalogoApiTest {
     }
 
     @Test
-    void filtroDeNotaDeCorteNaoExisteNoSwagger() throws Exception {
+    void filtroDeNotaDeCorteExisteNoSwagger() throws Exception {
         mvc.perform(get("/api/v1/docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/v1/cursos'].get.parameters[*].name",
-                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("notaCorteMax"))))
+                        org.hamcrest.Matchers.hasItem("notaCorteMax")))
                 .andExpect(jsonPath("$.paths['/api/v1/cursos'].get.parameters[*].name",
                         org.hamcrest.Matchers.hasItem("duracaoSemestres")));
     }

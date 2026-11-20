@@ -1,3 +1,4 @@
+
 package br.com.sauf_api.curso;
 
 import br.com.sauf_api.comum.Pagina;
@@ -5,6 +6,7 @@ import br.com.sauf_api.oferta.FiltroOfertas;
 import br.com.sauf_api.oferta.Grau;
 import br.com.sauf_api.oferta.Modalidade;
 import br.com.sauf_api.oferta.OfertaResposta;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -32,11 +34,17 @@ public class CursoController {
             @RequestParam(required = false) Modalidade modalidade,
             @RequestParam(required = false) Grau grau,
             @RequestParam(required = false) Integer duracaoSemestres,
+            @RequestParam(required = false) BigDecimal notaCorteMax,
             @RequestParam(required = false) String uf,
             @RequestParam(required = false) String cidade,
             @PageableDefault(size = 12, sort = "nome", direction = Sort.Direction.ASC) Pageable pageable) {
+
         var ofertas = new FiltroOfertas(modalidade, grau, duracaoSemestres, uf, cidade);
-        return service.listar(new FiltroCursos(busca, area, ofertas), pageable);
+
+        return service.listar(
+                new FiltroCursos(busca, area, ofertas, notaCorteMax),
+                pageable
+        );
     }
 
     @GetMapping("/{id}")
@@ -44,6 +52,7 @@ public class CursoController {
             @PathVariable UUID id,
             @RequestParam(required = false) String uf,
             @RequestParam(required = false) String cidade) {
+
         return service.detalhar(id, new FiltroOfertas(null, null, null, uf, cidade));
     }
 
@@ -55,6 +64,7 @@ public class CursoController {
             @RequestParam(required = false) String uf,
             @RequestParam(required = false) String cidade,
             @PageableDefault(size = 20, sort = "nomeNoSite", direction = Sort.Direction.ASC) Pageable pageable) {
+
         return service.ofertas(id, new FiltroOfertas(modalidade, grau, null, uf, cidade), pageable);
     }
 }

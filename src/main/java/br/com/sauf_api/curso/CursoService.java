@@ -9,9 +9,11 @@ import br.com.sauf_api.oferta.OfertaCursoRepository;
 import br.com.sauf_api.oferta.OfertaEspecificacoes;
 import br.com.sauf_api.oferta.OfertaResposta;
 import br.com.sauf_api.sisu.NotasSisu;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,11 +45,43 @@ public class CursoService {
     }
 
     public Pagina<CursoResumo> listar(FiltroCursos filtro, Pageable pageable) {
-        var pagina = cursos.findAll(filtro.especificacao(), pageable);
-        var ids = pagina.map(Curso::getId).getContent();
-        var numeros = estatisticas.porCurso(ids, filtro.ofertas());
-        var medias = sisu.media(estatisticas.codigosEmecPorCurso(ids, filtro.ofertas()));
         var imagensAreas = imagens.urlsAreas();
+
+        // Sem filtro SISU, mantém a consulta paginada original.
+        if (filtro.notaCorteMax() == null) {
+            var pagina = cursos.findAll(filtro.especificacao(), pageable);
+            var ids = pagina.map(Curso::getId).getContent();
+            var numeros = estatisticas.porCurso(ids, filtro.ofertas());
+            var medias = sisu.media(estatisticas.codigosEmecPorCurso(ids, filtro.ofertas()));
+            return Pagina.de(pagina, c -> CursoResumo.de(
+                    c, numeros.getOrDefault(c.getId(), SEM_OFERTAS), medias.get(c.getId()), imagemDaArea(c, imagensAreas)));
+        }
+
+        // Busca todos os cursos que atendem aos demais filtros.
+        List<Curso> candidatos = cursos.findAll(filtro.especificacao(), pageable.getSort());
+
+        // Calcula as médias SISU dos candidatos.
+        List<UUID> idsCandidatos = candidatos.stream().map(Curso::getId).toList();
+        Map<UUID, NotasSisu.Media> medias =
+                sisu.media(estatisticas.codigosEmecPorCurso(idsCandidatos, filtro.ofertas()));
+
+        // Mantém apenas cursos com média SISU dentro do limite.
+        List<Curso> filtrados = candidatos.stream()
+                .filter(c -> {
+                    NotasSisu.Media media = medias.get(c.getId());
+                    return media != null && media.nota().compareTo(filtro.notaCorteMax()) <= 0;
+                })
+                .toList();
+
+        // Aplica a paginação somente depois de filtrar.
+        int inicio = (int) Math.min(pageable.getOffset(), filtrados.size());
+        int fim = Math.min(inicio + pageable.getPageSize(), filtrados.size());
+        List<Curso> conteudo = filtrados.subList(inicio, fim);
+        var pagina = new PageImpl<>(conteudo, pageable, filtrados.size());
+
+        List<UUID> idsPagina = conteudo.stream().map(Curso::getId).toList();
+        var numeros = estatisticas.porCurso(idsPagina, filtro.ofertas());
+
         return Pagina.de(pagina, c -> CursoResumo.de(
                 c, numeros.getOrDefault(c.getId(), SEM_OFERTAS), medias.get(c.getId()), imagemDaArea(c, imagensAreas)));
     }
@@ -61,7 +95,12 @@ public class CursoService {
 
     public Pagina<OfertaResposta> ofertas(UUID id, FiltroOfertas filtro, Pageable pageable) {
         buscar(id);
-        var pagina = ofertas.findAll(OfertaEspecificacoes.doCurso(id, filtro), pageable);
+
+        var pagina = ofertas.findAll(
+                OfertaEspecificacoes.doCurso(id, filtro),
+                pageable
+        );
+
         return OfertaResposta.pagina(pagina, sisu);
     }
 
@@ -70,6 +109,7 @@ public class CursoService {
     }
 
     private Curso buscar(UUID id) {
-        return cursos.findById(id).orElseThrow(() -> new RecursoNaoEncontradoException("Curso", id));
+        return cursos.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Curso", id));
     }
 }

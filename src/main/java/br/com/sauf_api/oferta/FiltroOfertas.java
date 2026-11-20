@@ -35,7 +35,10 @@ public record FiltroOfertas(
             predicados.add(cb.equal(opcao.get("grau"), grau));
         }
         if (duracaoSemestres != null) {
-            predicados.add(cb.equal(oferta.get("duracaoSemestres"), duracaoSemestres));
+            predicados.add(cb.lessThanOrEqualTo(
+                    oferta.<Integer>get("duracaoSemestres"),
+                    duracaoSemestres
+            ));
         }
         if (uf != null && !uf.isBlank()) {
             predicados.add(cb.equal(cb.upper(oferta.get("uf")), uf.trim().toUpperCase()));
