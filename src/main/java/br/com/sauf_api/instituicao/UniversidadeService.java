@@ -3,6 +3,7 @@ package br.com.sauf_api.instituicao;
 import br.com.sauf_api.comum.Pagina;
 import br.com.sauf_api.comum.RecursoNaoEncontradoException;
 import br.com.sauf_api.curso.Curso;
+import br.com.sauf_api.imagem.ImagensCatalogo;
 import br.com.sauf_api.oferta.EstatisticasOfertas;
 import br.com.sauf_api.oferta.FiltroOfertas;
 import br.com.sauf_api.oferta.Modalidade;
@@ -34,22 +35,28 @@ public class UniversidadeService {
     private final OfertaCursoRepository ofertas;
     private final EstatisticasOfertas estatisticas;
     private final NotasSisu sisu;
+    private final ImagensCatalogo imagens;
 
     public UniversidadeService(
             InstituicaoRepository instituicoes,
             OfertaCursoRepository ofertas,
             EstatisticasOfertas estatisticas,
-            NotasSisu sisu) {
+            NotasSisu sisu,
+            ImagensCatalogo imagens) {
         this.instituicoes = instituicoes;
         this.ofertas = ofertas;
         this.estatisticas = estatisticas;
         this.sisu = sisu;
+        this.imagens = imagens;
     }
 
     public Pagina<UniversidadeResumo> listar(FiltroUniversidades filtro, Pageable pageable) {
         var pagina = instituicoes.findAll(filtro.especificacao(), pageable);
-        var numeros = estatisticas.porInstituicao(pagina.map(Instituicao::getId).getContent());
-        return Pagina.de(pagina, i -> UniversidadeResumo.de(i, numeros.getOrDefault(i.getId(), SEM_OFERTAS)));
+        var ids = pagina.map(Instituicao::getId).getContent();
+        var numeros = estatisticas.porInstituicao(ids);
+        var urls = imagens.urlsUniversidades(ids);
+        return Pagina.de(pagina, i -> UniversidadeResumo.de(
+                i, numeros.getOrDefault(i.getId(), SEM_OFERTAS), urls.logo(i.getId())));
     }
 
     public ContagensUniversidades contagens(FiltroUniversidades filtro) {
@@ -79,6 +86,7 @@ public class UniversidadeService {
                 .map(e -> new UniversidadeDetalhe.AreaCursos(e.getKey(), e.getValue()))
                 .toList();
         List<OfertaCurso> ofertasAtivas = ofertas.findByInstituicaoIdAndAtivaTrue(id);
+        var urls = imagens.urlsUniversidades(Set.of(id));
         return new UniversidadeDetalhe(
                 i.getId(),
                 i.getCodigoEmec(),
@@ -92,14 +100,14 @@ public class UniversidadeService {
                 i.getUf(),
                 UniversidadeDetalhe.EnderecoResposta.de(i),
                 i.getSiteUrl(),
-                i.getLogoUrl(),
-                null, // capaUrl: ainda sem fonte
-                null, // anoFundacao: ainda sem fonte
+                urls.logo(id),
+                urls.capa(id),
+                i.getAnoFundacao(),
                 i.getNotaMec(),
                 gratuita(ofertasAtivas),
                 vagasPorAno(ofertasAtivas),
                 numeros.totalCursos(),
-                List.of(), // sobre: ainda sem fonte
+                i.getSobreParagrafos(),
                 modalidadesOfertadas(ofertasAtivas),
                 cursosPorArea,
                 List.of(), // formasIngresso: ainda sem fonte

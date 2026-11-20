@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import br.com.sauf_api.comum.RecursoNaoEncontradoException;
+import br.com.sauf_api.imagem.ImagensCatalogo;
 import br.com.sauf_api.instituicao.Instituicao;
 import br.com.sauf_api.instituicao.InstituicaoRepository;
 import br.com.sauf_api.instituicao.TipoInstituicao;
@@ -37,7 +38,9 @@ class FavoritoUniversidadeServiceTest {
         favoritos = mock(FavoritoUniversidadeRepository.class);
         instituicoes = mock(InstituicaoRepository.class);
         estatisticas = mock(EstatisticasOfertas.class);
-        service = new FavoritoUniversidadeService(favoritos, instituicoes, estatisticas);
+        ImagensCatalogo imagens = mock(ImagensCatalogo.class);
+        when(imagens.urlsUniversidades(any())).thenReturn(ImagensCatalogo.UrlsUniversidades.NENHUMA);
+        service = new FavoritoUniversidadeService(favoritos, instituicoes, estatisticas, imagens);
     }
 
     @Test
