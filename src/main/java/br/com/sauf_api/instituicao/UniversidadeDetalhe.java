@@ -39,7 +39,8 @@ public record UniversidadeDetalhe(
         List<AreaCursos> cursosPorArea,
         @Schema(description = "Ainda sem fonte de dados; vem vazio") List<FormaIngresso> formasIngresso,
         @Schema(description = "Ainda sem fonte; vem null") String notaFormasIngresso,
-        @Schema(description = "Ainda sem fonte de dados; vem null") ProximoPrazo proximoPrazo,
+        @Schema(description = "Próximo evento da universidade no calendário (data = fim do período ou o dia; editalUrl = fonte); null se não houver")
+        ProximoPrazo proximoPrazo,
         Instant atualizadaEm) {
 
     public record AreaCursos(String area, long totalCursos) {}
