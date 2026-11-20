@@ -17,4 +17,4 @@ CREATE TABLE notificacao (
 );
 
 CREATE INDEX idx_notificacao_usuario_criada ON notificacao (usuario_id, criada_em DESC);
-CREATE INDEX idx_notificacao_usuario_nao_lida ON notificacao (usuario_id) WHERE lida = FALSE;
+CREATE INDEX idx_notificacao_usuario_lida ON notificacao (usuario_id, lida);
