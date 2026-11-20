@@ -1,6 +1,7 @@
 package br.com.sauf_api.favorito;
 
 import br.com.sauf_api.comum.RecursoNaoEncontradoException;
+import br.com.sauf_api.imagem.ImagensCatalogo;
 import br.com.sauf_api.instituicao.Instituicao;
 import br.com.sauf_api.instituicao.InstituicaoRepository;
 import br.com.sauf_api.instituicao.UniversidadeResumo;
@@ -22,14 +23,17 @@ public class FavoritoUniversidadeService {
     private final FavoritoUniversidadeRepository favoritos;
     private final InstituicaoRepository instituicoes;
     private final EstatisticasOfertas estatisticas;
+    private final ImagensCatalogo imagens;
 
     public FavoritoUniversidadeService(
             FavoritoUniversidadeRepository favoritos,
             InstituicaoRepository instituicoes,
-            EstatisticasOfertas estatisticas) {
+            EstatisticasOfertas estatisticas,
+            ImagensCatalogo imagens) {
         this.favoritos = favoritos;
         this.instituicoes = instituicoes;
         this.estatisticas = estatisticas;
+        this.imagens = imagens;
     }
 
     public List<UniversidadeFavorita> listar(UUID usuarioId) {
@@ -40,9 +44,10 @@ public class FavoritoUniversidadeService {
         List<UUID> ids = favoritas.stream().map(Instituicao::getId).toList();
         var numeros = estatisticas.porInstituicao(ids);
         Map<UUID, Long> campi = campi(ids);
+        var urls = imagens.urlsUniversidades(ids);
         return favoritas.stream()
                 .map(i -> UniversidadeFavorita.de(
-                        UniversidadeResumo.de(i, numeros.getOrDefault(i.getId(), SEM_OFERTAS)),
+                        UniversidadeResumo.de(i, numeros.getOrDefault(i.getId(), SEM_OFERTAS), urls.logo(i.getId())),
                         campi.getOrDefault(i.getId(), 0L)))
                 .toList();
     }

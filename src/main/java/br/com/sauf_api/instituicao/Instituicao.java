@@ -9,6 +9,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -45,14 +47,20 @@ public class Instituicao {
     @Column(name = "site_url")
     private String siteUrl;
 
-    @Column(name = "logo_url")
-    private String logoUrl;
-
     @Column(name = "nota_mec")
     private Integer notaMec;
 
     @Embedded
     private Endereco endereco;
+
+    // Bloco manual (sauf-scraper/dados/ies, D-98): só a ingestão de dados manuais mexe aqui
+    @Column(name = "ano_fundacao")
+    private Integer anoFundacao;
+
+    private String sobre;
+
+    @Column(name = "dados_manuais_em")
+    private Instant dadosManuaisEm;
 
     @Column(nullable = false)
     private boolean ativa = true;
@@ -89,6 +97,30 @@ public class Instituicao {
         this.cidade = cidade;
         this.endereco = endereco;
         this.atualizadaEm = Instant.now();
+    }
+
+    /** Substitui o bloco manual inteiro. Devolve false quando nada mudou (reenvio idêntico). */
+    public boolean aplicarDadosManuais(Integer anoFundacao, List<String> sobre, String siteUrl) {
+        String texto = sobre == null || sobre.isEmpty() ? null : String.join("\n\n", sobre);
+        if (Objects.equals(this.anoFundacao, anoFundacao)
+                && Objects.equals(this.sobre, texto)
+                && Objects.equals(this.siteUrl, siteUrl)) {
+            return false;
+        }
+        this.anoFundacao = anoFundacao;
+        this.sobre = texto;
+        this.siteUrl = siteUrl;
+        this.dadosManuaisEm = Instant.now();
+        return true;
+    }
+
+    public Integer getAnoFundacao() {
+        return anoFundacao;
+    }
+
+    /** Parágrafos do "sobre" (linha em branco entre eles, como na D-37); vazio sem dados manuais. */
+    public List<String> getSobreParagrafos() {
+        return sobre == null ? List.of() : List.of(sobre.split("\n\n"));
     }
 
     public UUID getId() {
@@ -145,14 +177,6 @@ public class Instituicao {
 
     public void setSiteUrl(String siteUrl) {
         this.siteUrl = siteUrl;
-    }
-
-    public String getLogoUrl() {
-        return logoUrl;
-    }
-
-    public void setLogoUrl(String logoUrl) {
-        this.logoUrl = logoUrl;
     }
 
     /** Pode ser null: o Hibernate devolve null quando todas as colunas do endereço estão vazias!! */
