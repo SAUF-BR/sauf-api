@@ -14,7 +14,9 @@ public interface NotificacaoRepository extends JpaRepository<Notificacao, UUID> 
 
     long countByUsuarioIdAndLidaFalse(UUID usuarioId);
 
-    @Modifying
+    // clearAutomatically: apaga o cache de primeiro nível para que uma listagem
+    // feita logo depois (mesma transação) enxergue as notificações como lidas.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Notificacao n
                SET n.lida = true, n.lidaEm = :momento
