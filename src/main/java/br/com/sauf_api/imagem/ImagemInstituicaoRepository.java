@@ -15,4 +15,9 @@ public interface ImagemInstituicaoRepository extends JpaRepository<ImagemInstitu
     @Query("select new br.com.sauf_api.imagem.VersaoImagemInstituicao(i.instituicaoId, i.tipo, i.hash) "
             + "from ImagemInstituicao i where i.instituicaoId in :ids")
     List<VersaoImagemInstituicao> versoes(Collection<UUID> ids);
+
+    // Só o crédito, sem carregar os bytes: legenda da imagem no detalhe (D-100)
+    @Query("select new br.com.sauf_api.imagem.CreditoImagem(i.autor, i.licenca, i.licencaUrl, i.fonteUrl) "
+            + "from ImagemInstituicao i where i.instituicaoId = :id and i.tipo = :tipo")
+    Optional<CreditoImagem> credito(UUID id, ImagemInstituicao.Tipo tipo);
 }

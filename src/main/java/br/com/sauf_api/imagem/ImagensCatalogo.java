@@ -44,6 +44,10 @@ public class ImagensCatalogo {
     }
 
     /** URL da imagem de cada área que tem imagem. */
+    public CreditoImagem credito(UUID instituicaoId, ImagemInstituicao.Tipo tipo) {
+        return instituicoes.credito(instituicaoId, tipo).orElse(null);
+    }
+
     public Map<UUID, String> urlsAreas() {
         Map<UUID, String> urls = new HashMap<>();
         for (VersaoImagemArea v : areas.versoes()) {
