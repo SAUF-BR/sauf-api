@@ -56,6 +56,9 @@ sauf:
     origens-permitidas: ${SAUF_CORS_ORIGENS:http://localhost:5173}
   ingestao:
     api-key: ${SAUF_API_KEY:}
+  # Rotas /api/v1/admin/** (D-107): e-mails, separados por vírgula, que viram ADMIN ao usá-las
+  admin:
+    emails: ${SAUF_ADMIN_EMAILS:}
 
 springdoc:
   api-docs:

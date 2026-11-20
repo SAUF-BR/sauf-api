@@ -1,5 +1,6 @@
 package br.com.sauf_api.instituicao;
 
+import br.com.sauf_api.calendario.CalendarioService;
 import br.com.sauf_api.comum.Pagina;
 import br.com.sauf_api.comum.RecursoNaoEncontradoException;
 import br.com.sauf_api.curso.Curso;
@@ -37,18 +38,21 @@ public class UniversidadeService {
     private final EstatisticasOfertas estatisticas;
     private final NotasSisu sisu;
     private final ImagensCatalogo imagens;
+    private final CalendarioService calendario;
 
     public UniversidadeService(
             InstituicaoRepository instituicoes,
             OfertaCursoRepository ofertas,
             EstatisticasOfertas estatisticas,
             NotasSisu sisu,
-            ImagensCatalogo imagens) {
+            ImagensCatalogo imagens,
+            CalendarioService calendario) {
         this.instituicoes = instituicoes;
         this.ofertas = ofertas;
         this.estatisticas = estatisticas;
         this.sisu = sisu;
         this.imagens = imagens;
+        this.calendario = calendario;
     }
 
     public Pagina<UniversidadeResumo> listar(FiltroUniversidades filtro, Pageable pageable) {
@@ -115,7 +119,7 @@ public class UniversidadeService {
                 cursosPorArea,
                 List.of(), // formasIngresso: ainda sem fonte
                 null, // notaFormasIngresso: ainda sem fonte
-                null, // proximoPrazo: ainda sem fonte
+                proximoPrazo(id),
                 i.getAtualizadaEm());
     }
 
@@ -123,6 +127,13 @@ public class UniversidadeService {
         buscar(id);
         var pagina = ofertas.findAll(OfertaEspecificacoes.daInstituicao(id, filtro, areaId), pageable);
         return OfertaResposta.pagina(pagina, sisu);
+    }
+
+    // D-105: o próximo evento da universidade no calendário (fim do período ou o dia)
+    private UniversidadeDetalhe.ProximoPrazo proximoPrazo(UUID id) {
+        return calendario.proximoPrazoDaInstituicao(id)
+                .map(e -> new UniversidadeDetalhe.ProximoPrazo(e.getTitulo(), e.prazo(), e.getFonteUrl()))
+                .orElse(null);
     }
 
     private Instituicao buscar(UUID id) {
