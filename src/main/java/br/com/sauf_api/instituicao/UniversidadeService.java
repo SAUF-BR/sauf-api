@@ -3,6 +3,7 @@ package br.com.sauf_api.instituicao;
 import br.com.sauf_api.comum.Pagina;
 import br.com.sauf_api.comum.RecursoNaoEncontradoException;
 import br.com.sauf_api.curso.Curso;
+import br.com.sauf_api.imagem.ImagemInstituicao;
 import br.com.sauf_api.imagem.ImagensCatalogo;
 import br.com.sauf_api.oferta.EstatisticasOfertas;
 import br.com.sauf_api.oferta.FiltroOfertas;
@@ -102,6 +103,8 @@ public class UniversidadeService {
                 i.getSiteUrl(),
                 urls.logo(id),
                 urls.capa(id),
+                imagens.credito(id, ImagemInstituicao.Tipo.LOGO),
+                imagens.credito(id, ImagemInstituicao.Tipo.CAPA),
                 i.getAnoFundacao(),
                 i.getNotaMec(),
                 gratuita(ofertasAtivas),

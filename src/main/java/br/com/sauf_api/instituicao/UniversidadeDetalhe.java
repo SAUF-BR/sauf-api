@@ -1,5 +1,6 @@
 package br.com.sauf_api.instituicao;
 
+import br.com.sauf_api.imagem.CreditoImagem;
 import br.com.sauf_api.oferta.Modalidade;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -25,6 +26,8 @@ public record UniversidadeDetalhe(
         String siteUrl,
         @Schema(description = "URL completa do logo (Wikimedia Commons, crédito em dados manuais); null sem logo (D-100)") String logoUrl,
         @Schema(description = "URL completa da foto de capa (Wikimedia Commons); null sem capa (D-100)") String capaUrl,
+        @Schema(description = "Crédito do logo; null sem logo (D-100)") CreditoImagem creditoLogo,
+        @Schema(description = "Crédito da capa, para a legenda \"Foto: autor, licença\"; null sem capa (D-100)") CreditoImagem creditoCapa,
         @Schema(description = "Ano da criação legal da instituição (D-102); null sem dados manuais") Integer anoFundacao,
         @Schema(description = "IGC faixa (1 a 5) do ano mais recente importado; null quando sem conceito (SC) ou sem IGC (D-49)") Integer notaMec,
         @Schema(description = "true se todas as ofertas com essa informação forem gratuitas (dado do Censo)") boolean gratuita,

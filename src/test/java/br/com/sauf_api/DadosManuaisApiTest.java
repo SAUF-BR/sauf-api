@@ -65,7 +65,10 @@ class DadosManuaisApiTest {
                 .andExpect(jsonPath("$.sobre", contains("Primeiro parágrafo.", "Segundo parágrafo.")))
                 .andExpect(jsonPath("$.siteUrl").value("https://www.uem.br"))
                 .andExpect(jsonPath("$.logoUrl", startsWith("http://localhost/api/v1/universidades/" + uem.getId() + "/logo?v=")))
-                .andExpect(jsonPath("$.capaUrl", startsWith("http://localhost/api/v1/universidades/" + uem.getId() + "/capa?v=")));
+                .andExpect(jsonPath("$.capaUrl", startsWith("http://localhost/api/v1/universidades/" + uem.getId() + "/capa?v=")))
+                .andExpect(jsonPath("$.creditoCapa.autor").value("Fulano"))
+                .andExpect(jsonPath("$.creditoCapa.licenca").value("CC BY-SA 4.0"))
+                .andExpect(jsonPath("$.creditoLogo.fonteUrl", startsWith("https://commons.wikimedia.org/")));
         mvc.perform(get("/api/v1/universidades").param("busca", "UEM"))
                 .andExpect(jsonPath("$.content[0].logoUrl", containsString("/logo?v=")));
     }
@@ -114,6 +117,7 @@ class DadosManuaisApiTest {
         mvc.perform(get("/api/v1/universidades/{id}", uem.getId()))
                 .andExpect(jsonPath("$.logoUrl").value(nullValue()))
                 .andExpect(jsonPath("$.capaUrl").value(nullValue()))
+                .andExpect(jsonPath("$.creditoCapa").value(nullValue()))
                 .andExpect(jsonPath("$.siteUrl").value(nullValue()));
         mvc.perform(get("/api/v1/universidades/{id}/logo", uem.getId())).andExpect(status().isNotFound());
     }
