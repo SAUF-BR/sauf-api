@@ -235,6 +235,15 @@ Implementam a D-55 e a ADR-005 do front. Fecham a P-09 e a P-10.
 | D-102 | **Ano de fundação = ano da criação legal** (decisão do Carlos, 20/11/2026): o ato (lei ou decreto) que criou a instituição com a forma atual, como a própria universidade apresenta no site oficial. A instituição de origem entra no "sobre", não no ano (ex.: UTFPR = 2005, Lei 11.184; o "sobre" conta a história desde 1909). Cadastrados: UEM 1969 (Lei Estadual 6.034/1969), UEL 1970 (Decreto Estadual 18.110/1970), UTFPR 2005 (Lei 11.184/2005), UFSC 1960 (Lei 3.849/1960), UFSM 1960 (Lei 3.834-C/1960). O "sobre" é escrito pelo time a partir dos sites oficiais (2 a 3 parágrafos, links em `[fontes]` no arquivo) e revisado antes de ir para produção. | Um critério só, com documento oficial, para as universidades poderem ser comparadas. |
 | D-103 | **O Censo e os spiders nunca sobrescrevem os dados manuais**: ano de fundação, "sobre", site e imagens só mudam pelas rotas da D-98 (há teste reimportando o Censo depois do envio). `instituicao.dados_manuais_em` guarda quando o ano, o "sobre" ou o site mudaram pela última vez (cada imagem tem o próprio `atualizada_em`). | Rodar os importadores de novo não pode apagar o trabalho feito à mão. |
 
+### Calendário e administração (20/11/2026, TR-343)
+
+| Código | Decisão | Motivo |
+|---|---|---|
+| D-104 | **Calendário de vestibulares na tabela `evento_calendario`** (aprovado pelo Carlos em 20/11/2026; fecha a P-33). Cada linha é um evento de **um dia** (`fim` nulo) ou um **período** (`inicio` a `fim`), com `tipo` `inscricao`, `prova`, `resultado`, `feira` ou `outro` (os 4 do protótipo mais `outro`, para gabaritos e confirmação de vaga), `titulo`, `descricao` opcional, `fonte_url` obrigatória (a página oficial da data), `ano_referencia` (o ano da edição: 2027 em "Vestibular 2027") e `instituicao_id` opcional (nulo = evento nacional, como ENEM e ProUni). A **`chave`** (única, ex.: `enem-2026-prova-1`, só minúsculas, números e hífen) é o nome estável do evento. Começamos só com ENEM, os vestibulares das 5 IES com scraper e o ProUni; **data que a fonte ainda não publicou não entra** ("a divulgar"). | Um modelo só para datas nacionais e das universidades, sempre com a fonte, e sem inventar data. |
+| D-105 | **Leitura pública**: `GET /api/v1/calendario/eventos?ano=` devolve os eventos com algum dia no ano (um período que cruza o ano aparece nos dois), no formato do front (`id`, `titulo`, `tipo`, `data` = início) mais `chave`, `inicio`, `fim`, `descricao`, `fonteUrl`, `anoReferencia` e `instituicao {id, sigla, nome}`. `GET /api/v1/calendario/proximos-prazos?limite=` (padrão 3, até 20) devolve os eventos cujo **prazo** (o `fim` do período ou o dia do evento) ainda não passou, do mais próximo ao mais distante, com `data` = prazo e `descricao` = quanto falta ("Encerra em 5 dias", "Amanhã", "Começa em 10 dias"). **"Hoje" é o dia em Brasília** (`America/Sao_Paulo`). O `proximoPrazo` do detalhe da universidade passa a vir do calendário (`titulo`, `data` = prazo, `editalUrl` = `fonteUrl`), `null` sem evento por vir. Para as **notificações** (feitas por um colega), o `CalendarioService` expõe `proximosEventos(ate)` e `eventosEntre(de, ate)`: só consulta, não avisa ninguém. | O front já espera essas duas rotas; os prazos precisam de uma regra só para Home, detalhe e notificações. |
+| D-106 | **Escrita pelas rotas de admin**: `PUT /api/v1/admin/calendario/eventos/{chave}` cria ou substitui o evento (reenviar igual responde sem `criados` nem `atualizados`; `codigoEmecInstituicao` desconhecido: **422**; `fim` antes do `inicio`, chave ou corpo inválido: **400**) e `DELETE` na mesma rota apaga (**204**; **404** se não existe). Hoje quem envia é o `sauf-scraper calendario` (arquivo `dados/calendario.toml`, ADR-BE-017); as telas de admin virão depois e usam as mesmas rotas. | Mesmo jeito dos dados manuais: o arquivo é a fonte, o envio é idempotente, e as telas futuras não precisam de outra API. |
+| D-107 | **Papel do usuário e acesso de admin.** `usuario.papel` (`ESTUDANTE` por padrão ou `ADMIN`). As rotas **`/api/v1/admin/**`** aceitam a **`X-Api-Key`** (o scraper) **ou** uma sessão de conta **ADMIN** (as telas futuras); sem nenhum dos dois: **401**; logado sem ser admin: **403**. A variável **`SAUF_ADMIN_EMAILS`** (e-mails separados por vírgula, sem diferenciar maiúsculas) promove a conta a ADMIN na primeira vez que ela usa uma rota de admin; tirar o e-mail da lista **não rebaixa** (trocar o papel no banco). Cada ambiente tem a sua lista no próprio `.env`; o repositório só tem um exemplo no `.env.example`. A promoção vai para o log só com o id da conta. | Administrar sem tela de cadastro de admins e sem e-mail de ninguém no código. |
+
 ## 3. Estrutura da v1 (implementada)
 
 Primeira versão do código, em `src/main`. Pode mudar com as próximas decisões.
@@ -286,6 +295,10 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
       provisório (D-55). `assinatura.usuario_id` aponta para ela.
     - **`usuario_foto`**: `usuario_id` (PK, apagada junto com o usuário), `conteudo` (BYTEA),
       `tipo`, `atualizada_em`.
+    - `usuario.papel` (`ESTUDANTE` ou `ADMIN`, D-107; `V2026_11_20_1500__calendario_admin.sql`).
+- **`evento_calendario`** (D-104, `V2026_11_20_1500__calendario_admin.sql`): `id`, `chave` (única),
+  `titulo`, `tipo`, `inicio`, `fim` (nulo = um dia), `instituicao_id` (nulo = nacional),
+  `descricao`, `fonte_url`, `ano_referencia`, `atualizado_em`.
 
 - **Simulados** (D-80, `V2026_11_13_1908__simulados.sql`):
     - **`simulado`**: `id`, `usuario_id` (sem chave estrangeira, D-55), `banca`, `tamanho` (nulo no
@@ -308,6 +321,10 @@ Primeira versão do código, em `src/main`. Pode mudar com as próximas decisõe
 | `GET /api/v1/universidades/{id}` | Detalhe da universidade (visão geral), com `esfera`, `enderecoSede`, cursos por área, `vagasPorAno`, `gratuita` e as 3 `modalidades` (D-58, D-64 a D-67). |
 | `GET /api/v1/universidades/{id}/ofertas` | Cursos ofertados pela universidade (filtros `area`, `modalidade`, `grau`). |
 | `GET /api/v1/areas` | Áreas para os filtros, com contagem de cursos. |
+| `GET /api/v1/calendario/eventos?ano=` | Tela de calendário: eventos com algum dia no ano (padrão: o ano atual), com `data` = início, `inicio`, `fim`, `fonteUrl` e a universidade (D-104, D-105). |
+| `GET /api/v1/calendario/proximos-prazos?limite=` | Prazos da Home: próximos eventos pelo prazo (fim do período ou o dia), com `descricao` "Encerra em N dias" (D-105). |
+| `PUT /api/v1/admin/calendario/eventos/{chave}` | Cria ou substitui um evento (`sauf-scraper calendario`, futuras telas de admin). IES desconhecida: **422**. Exige `X-Api-Key` ou sessão ADMIN (D-106, D-107). |
+| `DELETE /api/v1/admin/calendario/eventos/{chave}` | Apaga um evento (**204**; **404** se não existe). Exige `X-Api-Key` ou sessão ADMIN (D-106, D-107). |
 | `POST /api/v1/ingestao/censo` | Import do Censo (`sauf-scraper censo`). Cria/atualiza instituições pelo código e-MEC, cursos genéricos pelo rótulo Cine (D-31, D-36) e a tabela `censo_curso`. **Não cria ofertas** (D-33); depois do import, as ofertas do site já existentes são completadas de novo. Exige `X-Api-Key`. |
 | `POST /api/v1/ingestao/lotes` | Lote do scraper. Cria/atualiza uma oferta por página pela `chave` (D-34), com `opcoes` e `codigosEmec`, e completa com o Censo (D-35). Instituição não cadastrada: **422**. Exige `X-Api-Key`. |
 | `POST /api/v1/ingestao/questoes` | Lote de questões de uma prova (`sauf-scraper questoes enem --ano ...`). Upsert por prova e por número + língua; recusa só a questão inválida (D-68). Exige `X-Api-Key`. |
@@ -412,7 +429,7 @@ aberta e pode mudar sem esforço grande.
 | ~~P-09~~ | **Login e autenticação**: Supabase Auth ou login próprio (Spring Security)? | Resolvido: D-55 (login próprio), implementado na D-84 a D-87. |
 | ~~P-10~~ | **Contradição no front**: a ADR-005 decidiu token em cookie HttpOnly, mas o `client.ts` lê o token do `localStorage`. | Resolvido: o `client.ts` usa `withCredentials` e não guarda token (D-84). |
 | P-11 | **Fontes de dados ainda inexistentes**: mensalidade. Nota MEC resolvida pela D-49, notas de corte pela D-50/D-53, logos, capas e imagens dos cursos pela D-98 a D-101. Crédito das imagens: legenda "Foto: autor, licença" no front (D-100), a fazer quando o detalhe da universidade usar a API. | Mensalidade vem `null` (D-21). |
-| P-12 | **Formas de ingresso e próximos prazos/editais** por universidade. | `FormaIngresso` não tem relação no DER. |
+| P-12 | **Formas de ingresso e próximos prazos/editais** por universidade. | `FormaIngresso` não tem relação no DER. Próximo prazo resolvido pela D-105 (vem do calendário); formas de ingresso continuam sem fonte. |
 | ~~P-13~~ | **"Na sua região"**: localização do usuário ou filtro de UF/cidade? | Resolvido: D-42 (UF do perfil). |
 | P-14 | **Assinaturas e simulados**: planos, gateway de pagamento, conteúdo dos simulados. | Ainda em definição pelo time. |
 | P-15 | **Deploy** da API e **agendamento** do scraper. | Onde rodam e com que frequência. |
@@ -420,7 +437,7 @@ aberta e pode mudar sem esforço grande.
 | P-17 | **Histórico** de alterações de ofertas. | Sugestão para a v1: só o valor atual e a data da última coleta. |
 | P-18 | **Branches e PRs**: quando sair da `main`, qual fluxo e padrão de commit (`TR-xxx`)? | Depende dos cards (D-11). |
 | P-19 | **ADR-010 está como "proposto"** no front. | Validar formalmente com o time do front, agora que o backend adota o formato (D-15). |
-| P-33 | **Calendário acadêmico** (eventos de inscrição, prova, resultado, feiras; datas nacionais × vestibulares). | Adiada em 09/10/2026: o formato do calendário ainda não foi definido. |
+| ~~P-33~~ | **Calendário acadêmico** (eventos de inscrição, prova, resultado, feiras; datas nacionais × vestibulares). | Resolvido: D-104 a D-107 (20/11/2026). Telas de admin e notificações ficam para depois (notificações com um colega). |
 
 ---
 
