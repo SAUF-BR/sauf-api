@@ -48,6 +48,7 @@ public class SegurancaConfig {
                         .requestMatchers("/api/v1/assinatura", "/api/v1/assinatura/**").authenticated()
                         .requestMatchers("/api/v1/simulados", "/api/v1/simulados/**").authenticated()
                         .requestMatchers("/api/v1/favoritos/**").authenticated()
+                        .requestMatchers("/api/v1/notificacoes", "/api/v1/notificacoes/**").authenticated()
                         .anyRequest().permitAll())
                 .exceptionHandling(erros -> erros
                         .authenticationEntryPoint((request, response, e) -> responder(
