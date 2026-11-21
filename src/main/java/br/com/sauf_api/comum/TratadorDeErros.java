@@ -1,5 +1,6 @@
 package br.com.sauf_api.comum;
 
+import br.com.sauf_api.assinatura.RecursoForaDoPlanoException;
 import br.com.sauf_api.auth.CredenciaisInvalidasException;
 import br.com.sauf_api.auth.EmailEmUsoException;
 import br.com.sauf_api.documento.DocumentoDesatualizadoException;
@@ -79,6 +80,11 @@ public class TratadorDeErros {
     @ExceptionHandler({CredenciaisInvalidasException.class, NaoAutenticadoException.class})
     ResponseEntity<ErroResposta> naoAutenticado(RuntimeException e) {
         return responder(HttpStatus.UNAUTHORIZED, e.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(RecursoForaDoPlanoException.class)
+    ResponseEntity<ErroResposta> recursoForaDoPlano(RecursoForaDoPlanoException e) {
+        return responder(HttpStatus.FORBIDDEN, e.getMessage(), Map.of());
     }
 
     @ExceptionHandler(CampoInvalidoException.class)

@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.sauf_api.auth.TokenService;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,6 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.context.WebApplicationContext;
@@ -34,11 +36,13 @@ class RotasProtegidasApiTest {
     @Autowired MockMvc mvc;
     @Autowired WebApplicationContext contexto;
     @Autowired TokenService tokens;
+    @Autowired JdbcTemplate jdbc;
     MockMvc logado;
 
     @BeforeEach
     void entrar() {
         logado = Sessao.mvcLogado(contexto, tokens);
+        Sessao.assinar(jdbc, Sessao.USUARIO_TESTE, "PLUS");
     }
 
     @ParameterizedTest(name = "{0} {1}")
@@ -138,5 +142,84 @@ class RotasProtegidasApiTest {
                 .andExpect(status().isUnauthorized());
         logado.perform(post("/api/v1/ingestao/lotes").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    // ---- Plano da conta (D-109)
+
+    @ParameterizedTest(name = "{0} {1}")
+    @CsvSource({
+        "GET, /api/v1/simulados",
+        "POST, /api/v1/simulados",
+        "GET, /api/v1/simulados/opcoes",
+        "GET, /api/v1/simulados/resumo",
+        "GET, /api/v1/simulados/cronometro",
+        "GET, /api/v1/simulados/acompanhamento",
+        "GET, /api/v1/simulados/ranking",
+        "GET, /api/v1/simulados/" + ID,
+        "PUT, /api/v1/simulados/" + ID + "/questoes/1",
+        "POST, /api/v1/simulados/" + ID + "/finalizar",
+        "GET, /api/v1/simulados/" + ID + "/revisao",
+        "POST, /api/v1/simulados/" + ID + "/refazer-erros",
+    })
+    void semAssinaturaSimuladosRespondem403(String metodo, String caminho) throws Exception {
+        MockMvc free = Sessao.mvcLogado(contexto, tokens, UUID.randomUUID());
+        free.perform(request(HttpMethod.valueOf(metodo), caminho)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpoValido(metodo, caminho)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Seu plano não inclui este recurso"));
+    }
+
+    @Test
+    void basicLiberaSimuladosMasNaoOsRecursosDoPlus() throws Exception {
+        UUID usuario = novaConta();
+        Sessao.assinar(jdbc, usuario, "BASIC");
+        MockMvc basic = Sessao.mvcLogado(contexto, tokens, usuario);
+
+        basic.perform(get("/api/v1/simulados")).andExpect(status().isOk());
+        basic.perform(get("/api/v1/simulados/opcoes")).andExpect(status().isOk());
+        basic.perform(get("/api/v1/simulados/resumo")).andExpect(status().isOk());
+        basic.perform(get("/api/v1/simulados/cronometro")).andExpect(status().isForbidden());
+        basic.perform(get("/api/v1/simulados/acompanhamento")).andExpect(status().isForbidden());
+        basic.perform(get("/api/v1/simulados/ranking")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void assinaturaVencidaVoltaAoFree() throws Exception {
+        UUID usuario = novaConta();
+        jdbc.update("""
+                INSERT INTO assinatura (id, usuario_id, plano, status, renova_em, criada_em)
+                VALUES (?, ?, 'PLUS', 'ATIVA', DATE '2020-01-01', CURRENT_TIMESTAMP)
+                """, UUID.randomUUID(), usuario);
+        Sessao.mvcLogado(contexto, tokens, usuario)
+                .perform(get("/api/v1/simulados"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void favoritosContinuamNoFree() throws Exception {
+        MockMvc free = Sessao.mvcLogado(contexto, tokens, UUID.randomUUID());
+        free.perform(get("/api/v1/favoritos/cursos")).andExpect(status().isOk());
+        free.perform(get("/api/v1/favoritos/universidades")).andExpect(status().isOk());
+    }
+
+    private UUID novaConta() {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO usuario (id, nome, email, email_verificado, criado_em)
+                VALUES (?, 'Conta do teste', ?, TRUE, CURRENT_TIMESTAMP)
+                """, id, id + "@exemplo.com");
+        return id;
+    }
+
+    // Corpo que passa na validação, para o 403 vir do plano e não de um 400
+    private static String corpoValido(String metodo, String caminho) {
+        if (metodo.equals("POST") && caminho.equals("/api/v1/simulados")) {
+            return "{\"banca\":\"enem\",\"tamanho\":\"rapida\",\"areas\":[\"lc\"],\"cronometrado\":false}";
+        }
+        if (metodo.equals("PUT")) {
+            return "{\"alternativa\":\"A\",\"situacao\":\"respondida\",\"tempoSegundos\":10}";
+        }
+        return "{}";
     }
 }

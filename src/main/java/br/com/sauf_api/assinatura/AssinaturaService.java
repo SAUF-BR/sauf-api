@@ -35,6 +35,12 @@ public class AssinaturaService {
         return vigente(usuarioId).map(AssinaturaResposta::de);
     }
 
+    /** Plano que vale hoje: o da assinatura vigente ou, sem ela, o Free (D-98). */
+    @Transactional(readOnly = true)
+    public Plano planoAtual(UUID usuarioId) {
+        return vigente(usuarioId).map(Assinatura::getPlano).orElse(Plano.FREE);
+    }
+
     // Provisório (P-14): sem gateway, assinar ou trocar conta como pagamento confirmado.
     @Transactional
     public AssinaturaResposta trocarPlano(UUID usuarioId, Plano plano) {

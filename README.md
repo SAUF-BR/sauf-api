@@ -59,6 +59,8 @@ Login e cadastro próprios (D-84 a D-87): a sessão é um JWT num cookie `HttpOn
   Cada ambiente usa o seu.
 - Exigem login: `/me/**`, `/assinatura/**` (menos `/assinatura/planos`), `/simulados/**` e
   `/favoritos/**` (D-87, D-108). Sem sessão: **401**.
+- Simulados exigem o plano Basic; cronômetro, acompanhamento e ranking, o Plus (D-109). Sem o
+  plano: **403**.
 - Senha: 8+ caracteres, com pelo menos 1 letra e 1 caractere especial.
 - Em produção (HTTPS), use `SAUF_COOKIE_SECURE=true`.
 - No Postman/curl, o cookie volta no `Set-Cookie` do login e vai nas próximas chamadas.

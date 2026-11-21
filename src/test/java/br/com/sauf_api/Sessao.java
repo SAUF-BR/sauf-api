@@ -7,6 +7,7 @@ import br.com.sauf_api.auth.CookieSessao;
 import br.com.sauf_api.auth.TokenService;
 import jakarta.servlet.http.Cookie;
 import java.util.UUID;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -21,6 +22,14 @@ final class Sessao {
 
     static Cookie cookie(TokenService tokens, UUID usuarioId) {
         return new Cookie(CookieSessao.NOME, tokens.gerar(usuarioId));
+    }
+
+    /** Assinatura vigente até 2099 do plano dado (BASIC ou PLUS), direto no banco. */
+    static void assinar(JdbcTemplate jdbc, UUID usuarioId, String plano) {
+        jdbc.update("""
+                INSERT INTO assinatura (id, usuario_id, plano, status, renova_em, criada_em)
+                VALUES (?, ?, ?, 'ATIVA', DATE '2099-12-31', CURRENT_TIMESTAMP)
+                """, UUID.randomUUID(), usuarioId, plano);
     }
 
     /** MockMvc em que toda requisição já vai com o cookie de sessão do usuário de teste. */
