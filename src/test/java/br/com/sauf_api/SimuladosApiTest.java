@@ -97,6 +97,8 @@ class SimuladosApiTest {
     @BeforeEach
     void preparar() {
         mvc = Sessao.mvcLogado(contexto, tokens);
+        // Simulados, cronômetro, acompanhamento e ranking exigem o plano Plus (D-109)
+        Sessao.assinar(jdbc, Sessao.USUARIO_TESTE, "PLUS");
         relogio.agora = Instant.parse("2026-11-13T15:00:00Z");
         prova = new Prova(Banca.ENEM, 2024, "D1", "LARANJA");
         prova.atualizar("https://exemplo.test", "ENEM 2024 (INEP)");
