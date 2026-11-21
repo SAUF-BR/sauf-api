@@ -22,8 +22,8 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Quem pode acessar o quê (D-87). Exigem login: /me (perfil e foto) e /assinatura
- * (menos /assinatura/planos). O resto (catálogo, Swagger, login/cadastro) é público, e a
+ * Quem pode acessar o quê (D-87, D-108). Exigem login: /me (perfil e foto), /assinatura
+ * (menos /assinatura/planos), /simulados e /favoritos. O resto (catálogo, Swagger, login/cadastro) é público, e a
  * ingestão segue protegida pela X-Api-Key (ApiKeyInterceptor).
  * Sem sessão no servidor: a sessão é o JWT do cookie (FiltroSessao).
  */
@@ -46,6 +46,8 @@ public class SegurancaConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/assinatura/planos").permitAll()
                         .requestMatchers("/api/v1/me", "/api/v1/me/**").authenticated()
                         .requestMatchers("/api/v1/assinatura", "/api/v1/assinatura/**").authenticated()
+                        .requestMatchers("/api/v1/simulados", "/api/v1/simulados/**").authenticated()
+                        .requestMatchers("/api/v1/favoritos/**").authenticated()
                         .anyRequest().permitAll())
                 .exceptionHandling(erros -> erros
                         .authenticationEntryPoint((request, response, e) -> responder(

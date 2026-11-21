@@ -57,7 +57,8 @@ Login e cadastro próprios (D-84 a D-87): a sessão é um JWT num cookie `HttpOn
   sobe). Para gerar: `openssl rand -base64 32` (ou, no PowerShell,
   `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`).
   Cada ambiente usa o seu.
-- Exigem login: `/me/**` e `/assinatura/**` (menos `/assinatura/planos`). Sem sessão: **401**.
+- Exigem login: `/me/**`, `/assinatura/**` (menos `/assinatura/planos`), `/simulados/**` e
+  `/favoritos/**` (D-87, D-108). Sem sessão: **401**.
 - Senha: 8+ caracteres, com pelo menos 1 letra e 1 caractere especial.
 - Em produção (HTTPS), use `SAUF_COOKIE_SECURE=true`.
 - No Postman/curl, o cookie volta no `Set-Cookie` do login e vai nas próximas chamadas.
