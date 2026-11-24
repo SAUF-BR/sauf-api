@@ -14,7 +14,7 @@ import br.com.sauf_api.assinatura.Assinatura;
 import br.com.sauf_api.assinatura.AssinaturaRepository;
 import br.com.sauf_api.assinatura.Plano;
 import br.com.sauf_api.assinatura.StatusAssinatura;
-import br.com.sauf_api.comum.UsuarioLogado;
+import br.com.sauf_api.auth.TokenService;
 import br.com.sauf_api.pagamento.Pagamento;
 import br.com.sauf_api.pagamento.PagamentoRepository;
 import br.com.sauf_api.pagamento.StatusPagamento;
@@ -54,20 +54,20 @@ import org.springframework.test.web.servlet.ResultActions;
 @SpringBootTest(properties = {
     "STRIPE_WEBHOOK_SECRET=" + EventosStripeApiTest.SEGREDO,
     "STRIPE_PRICE_BASIC=price_basic",
-    "STRIPE_PRICE_PLUS=price_plus",
-    "STRIPE_PRICE_PREMIUM=price_premium"
+    "STRIPE_PRICE_PLUS=price_plus"
 })
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 class EventosStripeApiTest {
 
     static final String SEGREDO = "whsec_teste";
-    private static final UUID USUARIO = UsuarioLogado.PROVISORIO;
+    private static final UUID USUARIO = Sessao.USUARIO_TESTE;
     private static final long FIM_DO_PERIODO = Instant.parse("2030-05-20T12:00:00Z").getEpochSecond();
     private static final LocalDate DATA_FIM_DO_PERIODO = LocalDate.of(2030, 5, 20);
 
     @Autowired MockMvc mvc;
     @Autowired AssinaturaRepository assinaturas;
+    @Autowired TokenService tokens;
     @Autowired PagamentoRepository pagamentos;
     @Autowired StripeEventRepository eventos;
     @MockitoBean(answers = Answers.RETURNS_DEEP_STUBS) StripeClient stripe;
@@ -167,13 +167,13 @@ class EventosStripeApiTest {
         stripeTemAssinatura(subscription("sub_1", "active", "price_basic"));
         evento("customer.subscription.updated", "sub_1").andExpect(status().isOk());
 
-        Subscription alterada = subscription("sub_1", "active", "price_premium");
+        Subscription alterada = subscription("sub_1", "active", "price_plus");
         alterada.setCancelAtPeriodEnd(true);
         stripeTemAssinatura(alterada);
         evento("customer.subscription.updated", "sub_1").andExpect(status().isOk());
 
         Assinatura salva = assinatura("sub_1");
-        assertThat(salva.getPlano()).isEqualTo(Plano.PREMIUM);
+        assertThat(salva.getPlano()).isEqualTo(Plano.PLUS);
         assertThat(salva.getStatus()).isEqualTo(StatusAssinatura.CANCELAMENTO_AGENDADO);
         assertThat(salva.isCancelarNoFimPeriodo()).isTrue();
     }
@@ -196,7 +196,7 @@ class EventosStripeApiTest {
         evento("customer.subscription.deleted", "sub_1").andExpect(status().isOk());
 
         assertThat(assinatura("sub_1").getStatus()).isEqualTo(StatusAssinatura.CANCELADA);
-        mvc.perform(get("/api/v1/assinatura")).andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/assinatura").cookie(Sessao.cookie(tokens, Sessao.USUARIO_TESTE))).andExpect(status().isNoContent());
     }
 
     @Test
@@ -224,7 +224,7 @@ class EventosStripeApiTest {
 
         evento("customer.subscription.updated", "sub_1").andExpect(status().isOk());
 
-        mvc.perform(get("/api/v1/assinatura")).andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/assinatura").cookie(Sessao.cookie(tokens, Sessao.USUARIO_TESTE))).andExpect(status().isNoContent());
     }
 
     @Test
