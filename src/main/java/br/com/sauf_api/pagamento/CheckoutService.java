@@ -40,6 +40,10 @@ public class CheckoutService {
 
     /** Devolve a URL do Checkout hospedado. A assinatura só é criada quando o webhook confirmar (D-74). */
     public String criarSessao(UUID usuarioId, Plano plano) {
+        // D-98: o Free é de quem não assina, não passa pelo checkout.
+        if (plano.gratuito()) {
+            throw new AcaoNaoPermitidaException("O plano Free não precisa ser assinado");
+        }
         StripeClient cliente = stripe.getIfAvailable();
         if (cliente == null) {
             throw new PagamentoIndisponivelException("Pagamentos desabilitados");
