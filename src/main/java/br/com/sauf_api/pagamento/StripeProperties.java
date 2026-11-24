@@ -15,7 +15,7 @@ public record StripeProperties(
         String urlCancelamento,
         String urlRetornoPortal) {
 
-    public record Precos(String basic, String plus, String premium) {}
+    public record Precos(String basic, String plus) {}
 
     public boolean habilitado() {
         return secretKey != null && !secretKey.isBlank();
