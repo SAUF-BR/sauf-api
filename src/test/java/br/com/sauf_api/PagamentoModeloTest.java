@@ -39,7 +39,7 @@ class PagamentoModeloTest {
     @Test
     void assinaturaNovaComecaSemVinculoComOStripe() {
         Assinatura assinatura = assinaturas.saveAndFlush(
-                new Assinatura(UUID.randomUUID(), Plano.BASIC, LocalDate.now().plusMonths(1)));
+                new Assinatura(Sessao.USUARIO_TESTE, Plano.BASIC, LocalDate.now().plusMonths(1)));
 
         Assinatura lida = assinaturas.findById(assinatura.getId()).orElseThrow();
         assertThat(lida.getStatus()).isEqualTo(StatusAssinatura.ATIVA);
@@ -50,7 +50,7 @@ class PagamentoModeloTest {
     @Test
     void guardaPagamentoDaAssinaturaPeloIdDaInvoice() {
         Assinatura assinatura = assinaturas.saveAndFlush(
-                new Assinatura(UUID.randomUUID(), Plano.PLUS, LocalDate.now().plusMonths(1)));
+                new Assinatura(Sessao.USUARIO_TESTE, Plano.PLUS, LocalDate.now().plusMonths(1)));
         pagamentos.saveAndFlush(new Pagamento(assinatura.getId(), "in_teste_1", 1200, StatusPagamento.PAGO, Instant.now()));
 
         Pagamento lido = pagamentos.findByStripeInvoiceId("in_teste_1").orElseThrow();
