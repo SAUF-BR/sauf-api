@@ -47,7 +47,7 @@ class AssinaturaCobreTest {
     void recursoForaDoPlanoBloqueiaMesmoComStatusLiberado() {
         Assinatura basic = assinatura(StatusAssinatura.ATIVA, HOJE);
 
-        assertThat(basic.cobre(RecursoPlano.SIMULADOS_VESTIBULARES, HOJE)).isFalse();
+        assertThat(basic.cobre(RecursoPlano.RANKING, HOJE)).isFalse();
         assertThat(basic.cobre(RecursoPlano.DASHBOARD, HOJE)).isFalse();
     }
 
