@@ -161,11 +161,11 @@ Use sempre chaves `sk_test_...` e o **Postgres local**: o Supabase só recebe o 
 
 ### 1. Preparar o Stripe (uma vez por conta)
 
-1. No Dashboard, em modo teste, crie o Product "Assinatura SAUF.BR" com três preços mensais: Basic,
-   Plus e Premium.
+1. No Dashboard, em modo teste, crie o Product "Assinatura SAUF.BR" com dois preços mensais: Basic
+   e Plus (o Free não é vendido, D-98).
 2. Em **Settings > Billing > Customer portal**, salve a configuração do portal. Sem ela, o Stripe
    recusa a sessão e `POST /assinatura/portal` responde **502**. Regras da ADR:
-   - troca entre os 3 preços liberada;
+   - troca entre os 2 preços liberada;
    - upgrade imediato, com cobrança proporcional;
    - downgrade agendado para o fim do ciclo;
    - cancelamento no fim do período.
