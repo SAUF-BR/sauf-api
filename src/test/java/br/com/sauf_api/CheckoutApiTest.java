@@ -14,7 +14,7 @@ import br.com.sauf_api.assinatura.Assinatura;
 import br.com.sauf_api.assinatura.AssinaturaRepository;
 import br.com.sauf_api.assinatura.Plano;
 import br.com.sauf_api.assinatura.StatusAssinatura;
-import br.com.sauf_api.comum.UsuarioLogado;
+import br.com.sauf_api.auth.TokenService;
 import com.stripe.StripeClient;
 import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.StripeException;
@@ -39,7 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest(properties = {
     "STRIPE_PRICE_BASIC=price_basic",
     "STRIPE_PRICE_PLUS=price_plus",
-    "STRIPE_PRICE_PREMIUM=",
     "STRIPE_URL_SUCESSO=http://front/sucesso",
     "STRIPE_URL_CANCELAMENTO=http://front/cancelado"
 })
@@ -52,6 +51,7 @@ class CheckoutApiTest {
 
     @Autowired MockMvc mvc;
     @Autowired AssinaturaRepository assinaturas;
+    @Autowired TokenService tokens;
     @MockitoBean(answers = Answers.RETURNS_DEEP_STUBS) StripeClient stripe;
 
     @BeforeEach
@@ -69,7 +69,7 @@ class CheckoutApiTest {
 
         SessionCreateParams params = paramsEnviados();
         assertThat(params.getMode()).isEqualTo(SessionCreateParams.Mode.SUBSCRIPTION);
-        assertThat(params.getClientReferenceId()).isEqualTo(UsuarioLogado.PROVISORIO.toString());
+        assertThat(params.getClientReferenceId()).isEqualTo(Sessao.USUARIO_TESTE.toString());
         assertThat(params.getLineItems()).hasSize(1);
         assertThat(params.getLineItems().get(0).getPrice()).isEqualTo("price_plus");
         assertThat(params.getLineItems().get(0).getQuantity()).isEqualTo(1L);
@@ -83,7 +83,7 @@ class CheckoutApiTest {
         checkout("{\"plano\":\"basic\",\"aceiteTermo\":true}").andExpect(status().isOk());
 
         assertThat(paramsEnviados().getSubscriptionData().getMetadata())
-                .containsEntry("usuario_id", UsuarioLogado.PROVISORIO.toString())
+                .containsEntry("usuario_id", Sessao.USUARIO_TESTE.toString())
                 .containsEntry("aceite_termo_maior_idade", "true")
                 .containsEntry("aceite_versao_termo", "v1")
                 .containsKey("aceite_em");
@@ -93,7 +93,7 @@ class CheckoutApiTest {
     void naoCriaLinhaDeAssinaturaAntesDoPagamento() throws Exception {
         checkout("{\"plano\":\"basic\",\"aceiteTermo\":true}").andExpect(status().isOk());
 
-        assertThat(assinaturas.findFirstByUsuarioIdOrderByCriadaEmDesc(UsuarioLogado.PROVISORIO)).isEmpty();
+        assertThat(assinaturas.findFirstByUsuarioIdOrderByCriadaEmDesc(Sessao.USUARIO_TESTE)).isEmpty();
     }
 
     @Test
@@ -117,10 +117,10 @@ class CheckoutApiTest {
     }
 
     @Test
-    void planoSemPriceConfiguradoResponde503() throws Exception {
-        checkout("{\"plano\":\"premium\",\"aceiteTermo\":true}")
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.message").value("O plano Premium está indisponível para assinatura"));
+    void planoFreeResponde409ENaoAbreCheckout() throws Exception {
+        checkout("{\"plano\":\"free\",\"aceiteTermo\":true}")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("O plano Free não precisa ser assinado"));
 
         verify(stripe.v1().checkout().sessions(), never()).create(any(SessionCreateParams.class));
     }
@@ -158,7 +158,7 @@ class CheckoutApiTest {
 
     @Test
     void assinaturaSimuladaSemStripeNaoImpedeOCheckout() throws Exception {
-        assinaturas.saveAndFlush(new Assinatura(UsuarioLogado.PROVISORIO, Plano.BASIC, LocalDate.now().plusDays(10)));
+        assinaturas.saveAndFlush(new Assinatura(Sessao.USUARIO_TESTE, Plano.BASIC, LocalDate.now().plusDays(10)));
 
         checkout("{\"plano\":\"plus\",\"aceiteTermo\":true}").andExpect(status().isOk());
 
@@ -176,7 +176,7 @@ class CheckoutApiTest {
     }
 
     private Assinatura doStripe(StatusAssinatura status, LocalDate renovaEm) {
-        Assinatura assinatura = new Assinatura(UsuarioLogado.PROVISORIO, Plano.BASIC, renovaEm);
+        Assinatura assinatura = new Assinatura(Sessao.USUARIO_TESTE, Plano.BASIC, renovaEm);
         ReflectionTestUtils.setField(assinatura, "status", status);
         ReflectionTestUtils.setField(assinatura, "stripeCustomerId", "cus_1");
         ReflectionTestUtils.setField(assinatura, "stripeSubscriptionId", "sub_1");
@@ -191,6 +191,7 @@ class CheckoutApiTest {
 
     private ResultActions checkout(String corpo) throws Exception {
         return mvc.perform(post("/api/v1/assinatura/checkout")
+                .cookie(Sessao.cookie(tokens, Sessao.USUARIO_TESTE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(corpo));
     }
