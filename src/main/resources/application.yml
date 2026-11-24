@@ -62,7 +62,6 @@ sauf:
     precos:
       basic: ${STRIPE_PRICE_BASIC:}
       plus: ${STRIPE_PRICE_PLUS:}
-      premium: ${STRIPE_PRICE_PREMIUM:}
     url-sucesso: ${STRIPE_URL_SUCESSO:http://localhost:5173/perfil/assinatura?checkout=sucesso}
     url-cancelamento: ${STRIPE_URL_CANCELAMENTO:http://localhost:5173/perfil/assinatura?checkout=cancelado}
     url-retorno-portal: ${STRIPE_URL_RETORNO_PORTAL:http://localhost:5173/perfil/assinatura}
