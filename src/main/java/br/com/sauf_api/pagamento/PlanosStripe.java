@@ -28,6 +28,7 @@ public class PlanosStripe {
 
     public PlanosStripe(StripeProperties props) {
         Map<String, List<Plano>> planosPorPrice = Arrays.stream(Plano.values())
+                .filter(plano -> !plano.gratuito())
                 .filter(plano -> preenchido(configurado(props.precos(), plano)))
                 .collect(Collectors.groupingBy(plano -> configurado(props.precos(), plano)));
 
@@ -52,7 +53,8 @@ public class PlanosStripe {
     }
 
     private void avisarPlanosSemPrice() {
-        List<Plano> semPrice = new ArrayList<>(List.of(Plano.values()));
+        // O Free não é vendido (D-98): não tem price no Stripe.
+        List<Plano> semPrice = new ArrayList<>(Arrays.stream(Plano.values()).filter(p -> !p.gratuito()).toList());
         semPrice.removeAll(pricePorPlano.keySet());
         if (!semPrice.isEmpty()) {
             log.warn("Planos sem price do Stripe válido (vazio ou repetido): {}", semPrice);
@@ -63,7 +65,7 @@ public class PlanosStripe {
         return switch (plano) {
             case BASIC -> precos.basic();
             case PLUS -> precos.plus();
-            case PREMIUM -> precos.premium();
+            case FREE -> null;
         };
     }
 
