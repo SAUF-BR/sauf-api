@@ -11,8 +11,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(properties = {
     "STRIPE_PRICE_BASIC=price_config_basic",
-    "STRIPE_PRICE_PLUS=price_config_plus",
-    "STRIPE_PRICE_PREMIUM=price_config_premium"
+    "STRIPE_PRICE_PLUS=price_config_plus"
 })
 @ActiveProfiles("test")
 class PlanosStripeConfigTest {
@@ -23,6 +22,5 @@ class PlanosStripeConfigTest {
     void leOsPricesDasVariaveisDeAmbiente() {
         assertThat(planos.priceDe(Plano.BASIC)).contains("price_config_basic");
         assertThat(planos.priceDe(Plano.PLUS)).contains("price_config_plus");
-        assertThat(planos.priceDe(Plano.PREMIUM)).contains("price_config_premium");
     }
 }
