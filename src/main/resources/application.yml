@@ -7,6 +7,10 @@ spring:
     url: ${SAUF_DB_URL}
     username: ${SAUF_DB_USER}
     password: ${SAUF_DB_PASSWORD}
+    # Banco fora do ar: desiste em 5 s e responde 503 (TratadorDeErros), em vez de segurar a
+    # requisição por 30 s até o front desistir sozinho
+    hikari:
+      connection-timeout: 5000
   jpa:
     open-in-view: false
     hibernate:
@@ -20,8 +24,34 @@ spring:
         max-page-size: 50
   flyway:
     enabled: true
+  # E-mails da conta (D-88). Local: Mailpit do docker-compose (caixa em http://localhost:8025).
+  # Produção: SMTP do provedor escolhido (usuário/senha e STARTTLS pelas variáveis).
+  mail:
+    host: ${SAUF_MAIL_HOST:localhost}
+    port: ${SAUF_MAIL_PORT:1025}
+    username: ${SAUF_MAIL_USER:}
+    password: ${SAUF_MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SAUF_MAIL_AUTH:false}
+      mail.smtp.starttls.enable: ${SAUF_MAIL_STARTTLS:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+  # Foto de perfil: até 2 MB (D-81)
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
 
 sauf:
+  mail:
+    remetente: ${SAUF_MAIL_FROM:SAUF <nao-responda@sauf.local>}
+  # Login (D-84): segredo do JWT (32+ bytes em base64, obrigatório), duração da sessão e
+  # cookie Secure (true em produção, com HTTPS)
+  auth:
+    jwt-secret: ${SAUF_JWT_SECRET:}
+    sessao-dias: ${SAUF_SESSAO_DIAS:7}
+    cookie-secure: ${SAUF_COOKIE_SECURE:false}
   cors:
     origens-permitidas: ${SAUF_CORS_ORIGENS:http://localhost:5173}
   ingestao:

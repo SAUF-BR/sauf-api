@@ -714,6 +714,363 @@
           }
         }
       ]
+    },
+    {
+      "name": "Simulados",
+      "item": [
+        {
+          "name": "Opções",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Tamanhos, segundos por questão, bancas e áreas com a quantidade de questões sorteáveis.",
+            "url": {
+              "raw": "{{baseUrl}}/simulados/opcoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados",
+                "opcoes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar simulado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"simuladoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Sorteia as questões do ENEM (só disponíveis, não anuladas, sem espanhol), dividindo igualmente entre as áreas e priorizando as que o usuário nunca fez. 400 sem áreas; 409 se faltarem questões. Salva o id em {{simuladoId}}.",
+            "url": {
+              "raw": "{{baseUrl}}/simulados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"banca\": \"enem\",\n  \"tamanho\": \"rapida\",\n  \"areas\": [\n    \"lc\",\n    \"ch\",\n    \"cn\",\n    \"mt\"\n  ],\n  \"cronometrado\": true,\n  \"segundosPorQuestao\": 150\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Detalhe do simulado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Questões sem gabarito. 404 se não existe ou é de outro usuário.",
+            "url": {
+              "raw": "{{baseUrl}}/simulados/{{simuladoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados",
+                "{{simuladoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Responder questão",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "tempoSegundos é o total acumulado na questão (a API guarda o maior). No cronometrado, resposta nova com o tempo maior ou igual ao limite volta com foraDoTempo true. 409 se o simulado foi finalizado.",
+            "url": {
+              "raw": "{{baseUrl}}/simulados/{{simuladoId}}/questoes/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados",
+                "{{simuladoId}}",
+                "questoes",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alternativa\": \"A\",\n  \"situacao\": \"respondida\",\n  \"tempoSegundos\": 42\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Finalizar simulado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "Pendentes viram em_branco, corrige e devolve a revisão com o gabarito. Chamar de novo devolve a mesma revisão.",
+            "url": {
+              "raw": "{{baseUrl}}/simulados/{{simuladoId}}/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados",
+                "{{simuladoId}}",
+                "finalizar"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Revisão",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Gabarito e resultado por questão. 409 se o simulado ainda está em andamento.",
+            "url": {
+              "raw": "{{baseUrl}}/simulados/{{simuladoId}}/revisao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados",
+                "{{simuladoId}}",
+                "revisao"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refazer erros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "Novo simulado só com as questões erradas (tamanho null, mesmo cronômetro). 409 se não teve erros ou não está concluído.",
+            "url": {
+              "raw": "{{baseUrl}}/simulados/{{simuladoId}}/refazer-erros",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados",
+                "{{simuladoId}}",
+                "refazer-erros"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar simulados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Lista paginada do usuário. Na ordem por nota, simulados em andamento ficam no fim.",
+            "url": {
+              "raw": "{{baseUrl}}/simulados?ordem=recente&page=0&size=12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "concluido",
+                  "description": "em_andamento ou concluido.",
+                  "disabled": true
+                },
+                {
+                  "key": "ordem",
+                  "value": "recente",
+                  "description": "recente, antigo, maior_nota ou menor_nota."
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Começa em 0."
+                },
+                {
+                  "key": "size",
+                  "value": "12",
+                  "description": "Padrão 12, máximo 50."
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resumo de desempenho",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Simulados feitos, questões respondidas, aproveitamento médio e melhor área.",
+            "url": {
+              "raw": "{{baseUrl}}/simulados/resumo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados",
+                "resumo"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cronômetro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Estatísticas de tempo de estudo (dias em America/Sao_Paulo).",
+            "url": {
+              "raw": "{{baseUrl}}/simulados/cronometro?periodo=semana",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulados",
+                "cronometro"
+              ],
+              "query": [
+                {
+                  "key": "periodo",
+                  "value": "semana",
+                  "description": "semana, mes ou ano."
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -723,6 +1080,10 @@
     },
     {
       "key": "universidadeId",
+      "value": ""
+    },
+    {
+      "key": "simuladoId",
       "value": ""
     }
   ]

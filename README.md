@@ -7,7 +7,7 @@ API do SAUF-BR (Java 21 + Spring Boot 4 + PostgreSQL: local em Docker ou Supabas
 
 1. Suba o banco local com Docker (seção abaixo). Para usar o Supabase compartilhado, copie a
    connection string do **Session pooler** (JDBC); o bloco já está comentado no `.env.example`.
-2. Copie `.env.example` para `.env` e preencha o `SAUF_API_KEY`.
+2. Copie `.env.example` para `.env` e preencha o `SAUF_API_KEY` e o `SAUF_JWT_SECRET` (ver "Login").
 3. Suba a API:
 
 ```
@@ -36,6 +36,84 @@ docker compose down -v     # apaga o container E os dados (zera o banco)
 - O banco local começa **vazio**: popule na ordem API no ar → `censo` → spider → `igc` → `sisu`
   (ver "Carregando dados").
 - **Regra do time:** o Supabase (compartilhado) recebe só o que já está na `main`.
+
+### Usuário de homologação
+
+Conta fixa com assinatura **Plus ativa até 31/12/2099** (D-83), para testar as telas de
+assinante e o login: e-mail `homologacao@sauf.local`, senha `Homolog@2026` (só de homologação).
+Rodar o script de novo volta a conta ao estado original.
+
+```
+docker compose exec -T postgres psql -U sauf -d sauf < docs/homologacao/usuario-homologacao.sql
+```
+
+Depois é só entrar pela tela de login (ou `POST /api/v1/auth/login`) com essas credenciais.
+
+## Login
+
+Login e cadastro próprios (D-84 a D-87): a sessão é um JWT num cookie `HttpOnly` de 7 dias.
+
+- O `.env` precisa de `SAUF_JWT_SECRET` (32 bytes aleatórios em base64; sem ele a API não
+  sobe). Para gerar: `openssl rand -base64 32` (ou, no PowerShell,
+  `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`).
+  Cada ambiente usa o seu.
+- Exigem login: `/me/**`, `/assinatura/**` (menos `/assinatura/planos`), `/simulados/**` e
+  `/favoritos/**` (D-87, D-108). Sem sessão: **401**.
+- Simulados exigem o plano Basic; cronômetro, acompanhamento e ranking, o Plus (D-109). Sem o
+  plano: **403**.
+- Senha: 8+ caracteres, com pelo menos 1 letra e 1 caractere especial.
+- Em produção (HTTPS), use `SAUF_COOKIE_SECURE=true`.
+- No Postman/curl, o cookie volta no `Set-Cookie` do login e vai nas próximas chamadas.
+- Há "esqueci minha senha" (D-90) e troca de senha no perfil (D-91). O e-mail da conta não
+  pode ser trocado (D-82). A verificação do e-mail no cadastro ficou para depois (D-89).
+
+## E-mails ("esqueci minha senha")
+
+O "esqueci minha senha" manda um **código de 6 dígitos** por e-mail; com o código certo a pessoa
+entra e cria a senha nova no perfil (D-90).
+
+**Local (padrão):** o `docker compose up -d` sobe também o **Mailpit**, um servidor de e-mail falso.
+Tudo o que a API envia aparece em **http://localhost:8025** (nada sai para a internet).
+
+**E-mail de verdade (Gmail):**
+
+1. Numa conta Gmail do projeto, ative a verificação em duas etapas.
+2. Gere uma "senha de app" em https://myaccount.google.com/apppasswords (16 letras).
+3. Coloque no `.env` (a senha de app é segredo: nunca vai para o Git):
+
+```
+SAUF_MAIL_HOST=smtp.gmail.com
+SAUF_MAIL_PORT=587
+SAUF_MAIL_AUTH=true
+SAUF_MAIL_STARTTLS=true
+SAUF_MAIL_USER=conta.do.projeto@gmail.com
+SAUF_MAIL_PASSWORD=<senha de app>
+SAUF_MAIL_FROM=SAUF <conta.do.projeto@gmail.com>
+```
+
+4. Reinicie a API. Sem essas linhas, os e-mails continuam indo para o Mailpit.
+
+## Termos de Uso e Política de Privacidade
+
+Os textos ficam em `src/main/resources/documentos-legais/`, um arquivo `.md` por versão (D-93).
+Ao subir, a API copia cada versão para o banco com o hash do texto, e os aceites guardam a versão
+exata que cada pessoa aceitou.
+
+**Para publicar uma versão nova:** copie o arquivo atual com o número novo (ex.:
+`termos-de-uso-v1.1.0.md`), mude o texto e o cabeçalho e faça o deploy. **Não edite** uma versão
+que já foi aceita: a API não sobe e avisa.
+
+```
+---
+tipo: TERMOS_USO              # ou POLITICA_PRIVACIDADE
+versao: 1.1.0
+vigente_a_partir_de: "2026-12-01"   # pode ser no futuro: passa a valer nesse dia
+exige_novo_aceite: true       # true = quem já tem conta aceita de novo ao entrar
+resumo_alteracoes: "O que mudou, em uma frase (aparece para quem precisa aceitar de novo)"
+---
+# Termos de Uso do SAUF-BR
+...
+```
 
 ## Migrations
 
@@ -178,5 +256,9 @@ src/main/java/br/com/sauf_api/
 ├── curso/        # curso genérico (catálogo)
 ├── instituicao/  # universidades (rotas /universidades)
 ├── oferta/       # curso ofertado por uma universidade + números agregados
+├── usuario/      # conta do usuário logado: /me e foto de perfil (D-80 a D-82)
+├── auth/         # login, cadastro, confirmação de e-mail, senha e segurança (D-84 a D-91)
+├── email/        # envio de e-mails por SMTP e textos dos e-mails (D-88)
+├── documento/    # Termos de Uso e Política de Privacidade versionados e aceites (D-93)
 └── ingestao/     # POST /api/v1/ingestao/censo e /lotes (usados pelo sauf-scraper)
 ```

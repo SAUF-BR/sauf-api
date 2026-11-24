@@ -20,5 +20,15 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Servidor de e-mail falso para dev (D-88): a API envia por SMTP na porta 1025 e os
+  # e-mails aparecem na caixa de entrada em http://localhost:8025. Nada sai para a internet.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    container_name: sauf-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+
 volumes:
   sauf-pgdata:

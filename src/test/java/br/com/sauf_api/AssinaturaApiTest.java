@@ -13,26 +13,33 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.sauf_api.assinatura.Assinatura;
 import br.com.sauf_api.assinatura.AssinaturaRepository;
 import br.com.sauf_api.assinatura.Plano;
-import br.com.sauf_api.comum.UsuarioLogado;
+import br.com.sauf_api.auth.TokenService;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@AutoConfigureMockMvc
 @Transactional
 class AssinaturaApiTest {
 
-    @Autowired MockMvc mvc;
+    @Autowired WebApplicationContext contexto;
+    @Autowired TokenService tokens;
+    MockMvc mvc;
+
+    @BeforeEach
+    void entrar() {
+        mvc = Sessao.mvcLogado(contexto, tokens);
+    }
     @Autowired AssinaturaRepository assinaturas;
 
     @Test
@@ -40,13 +47,31 @@ class AssinaturaApiTest {
         mvc.perform(get("/api/v1/assinatura/planos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(3)))
-                .andExpect(jsonPath("$[*].id", contains("basic", "plus", "premium")))
-                .andExpect(jsonPath("$[0].precoMensal").value(8.0))
-                .andExpect(jsonPath("$[0].recursos", contains("simulados-enem")))
-                .andExpect(jsonPath("$[0].selo").value(nullValue()))
+                .andExpect(jsonPath("$[*].id", contains("free", "basic", "plus")))
+                .andExpect(jsonPath("$[0].precoMensal").value(0.0))
+                .andExpect(jsonPath("$[0].recursos", contains(
+                        "busca-cursos", "busca-universidades", "teste-vocacional", "calendario", "favoritos")))
+                .andExpect(jsonPath("$[1].precoMensal").value(8.0))
+                .andExpect(jsonPath("$[1].recursos", contains(
+                        "busca-cursos", "busca-universidades", "teste-vocacional", "calendario", "favoritos",
+                        "simulados-enem")))
+                .andExpect(jsonPath("$[1].selo").value(nullValue()))
+                .andExpect(jsonPath("$[2].precoMensal").value(10.0))
                 .andExpect(jsonPath("$[2].selo").value("Completo"))
                 .andExpect(jsonPath("$[2].recursos", contains(
-                        "simulados-enem", "simulados-vestibulares", "dashboard", "timer", "ranking")));
+                        "busca-cursos", "busca-universidades", "teste-vocacional", "calendario", "favoritos",
+                        "simulados-enem", "ranking", "timer", "dashboard")));
+    }
+
+    @Test
+    void assinarOFreeResponde409ENaoGrava() throws Exception {
+        assinar("free")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "O plano Free não precisa ser assinado. Para voltar a ele, cancele a sua assinatura"));
+
+        mvc.perform(get("/api/v1/assinatura"))
+                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -70,7 +95,7 @@ class AssinaturaApiTest {
     void putNaoMudaAssinaturaExistente() throws Exception {
         assinaturaAtiva();
 
-        assinar("premium")
+        assinar("plus")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Para assinar, use o checkout"));
 
@@ -85,7 +110,7 @@ class AssinaturaApiTest {
     void putComAssinaturaNoStripeIndicaOPortalENaoMudaOPlano() throws Exception {
         assinaturaAtiva().vincularAoStripe("sub_1");
 
-        assinar("premium")
+        assinar("plus")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Para trocar de plano, use o portal da assinatura"));
 
@@ -124,7 +149,7 @@ class AssinaturaApiTest {
 
     @Test
     void assinaturaVencidaContaComoSemAssinatura() throws Exception {
-        assinaturas.save(new Assinatura(UsuarioLogado.PROVISORIO, Plano.PLUS, hoje().minusDays(1)));
+        assinaturas.save(new Assinatura(Sessao.USUARIO_TESTE, Plano.PLUS, hoje().minusDays(1)));
 
         mvc.perform(get("/api/v1/assinatura"))
                 .andExpect(status().isNoContent());
@@ -137,7 +162,7 @@ class AssinaturaApiTest {
     }
 
     private Assinatura assinaturaAtiva() {
-        return assinaturas.save(new Assinatura(UsuarioLogado.PROVISORIO, Plano.BASIC, hoje().plusDays(10)));
+        return assinaturas.save(new Assinatura(Sessao.USUARIO_TESTE, Plano.BASIC, hoje().plusDays(10)));
     }
 
     private ResultActions assinar(String plano) throws Exception {
@@ -147,6 +172,6 @@ class AssinaturaApiTest {
     }
 
     private LocalDate hoje() {
-        return LocalDate.now(ZoneOffset.UTC);
+        return LocalDate.now(ZoneId.of("America/Sao_Paulo"));
     }
 }
