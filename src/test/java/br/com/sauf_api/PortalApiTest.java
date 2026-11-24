@@ -14,7 +14,7 @@ import br.com.sauf_api.assinatura.Assinatura;
 import br.com.sauf_api.assinatura.AssinaturaRepository;
 import br.com.sauf_api.assinatura.Plano;
 import br.com.sauf_api.assinatura.StatusAssinatura;
-import br.com.sauf_api.comum.UsuarioLogado;
+import br.com.sauf_api.auth.TokenService;
 import com.stripe.StripeClient;
 import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.StripeException;
@@ -44,6 +44,7 @@ class PortalApiTest {
 
     @Autowired MockMvc mvc;
     @Autowired AssinaturaRepository assinaturas;
+    @Autowired TokenService tokens;
     @MockitoBean(answers = Answers.RETURNS_DEEP_STUBS) StripeClient stripe;
 
     @BeforeEach
@@ -82,7 +83,7 @@ class PortalApiTest {
 
     @Test
     void assinaturaSimuladaSemCustomerResponde409() throws Exception {
-        assinaturas.saveAndFlush(new Assinatura(UsuarioLogado.PROVISORIO, Plano.BASIC, LocalDate.now().plusDays(10)));
+        assinaturas.saveAndFlush(new Assinatura(Sessao.USUARIO_TESTE, Plano.BASIC, LocalDate.now().plusDays(10)));
 
         portal().andExpect(status().isConflict());
 
@@ -101,13 +102,13 @@ class PortalApiTest {
 
     private void assinaturaNoStripe(StatusAssinatura status) {
         LocalDate renovaEm = LocalDate.now().plusDays(10);
-        Assinatura assinatura = new Assinatura(UsuarioLogado.PROVISORIO, Plano.PLUS, renovaEm);
+        Assinatura assinatura = new Assinatura(Sessao.USUARIO_TESTE, Plano.PLUS, renovaEm);
         assinatura.vincularAoStripe("sub_1");
         assinatura.sincronizarComStripe(Plano.PLUS, status, renovaEm, false, "cus_1");
         assinaturas.saveAndFlush(assinatura);
     }
 
     private ResultActions portal() throws Exception {
-        return mvc.perform(post("/api/v1/assinatura/portal"));
+        return mvc.perform(post("/api/v1/assinatura/portal").cookie(Sessao.cookie(tokens, Sessao.USUARIO_TESTE)));
     }
 }
