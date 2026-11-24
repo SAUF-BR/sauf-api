@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.sauf_api.auth.TokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,10 +18,11 @@ import org.springframework.test.web.servlet.MockMvc;
 class PortalDesabilitadoApiTest {
 
     @Autowired MockMvc mvc;
+    @Autowired TokenService tokens;
 
     @Test
     void semChaveDoStripeResponde503() throws Exception {
-        mvc.perform(post("/api/v1/assinatura/portal"))
+        mvc.perform(post("/api/v1/assinatura/portal").cookie(Sessao.cookie(tokens, Sessao.USUARIO_TESTE)))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.message").value("Pagamentos desabilitados"));
     }
