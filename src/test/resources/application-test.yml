@@ -7,6 +7,8 @@ spring:
 sauf:
   ingestao:
     api-key: chave-de-teste
+  admin:
+    emails: " Admin@Sauf.local , outra@sauf.local"
   auth:
     # Só para os testes (32 bytes em base64)
     jwt-secret: c2VncmVkby1kb3MtdGVzdGVzLWRhLXNhdWYtYXBpLTMyYg==

@@ -65,6 +65,9 @@ sauf:
     url-sucesso: ${STRIPE_URL_SUCESSO:http://localhost:5173/perfil/assinatura?checkout=sucesso}
     url-cancelamento: ${STRIPE_URL_CANCELAMENTO:http://localhost:5173/perfil/assinatura?checkout=cancelado}
     url-retorno-portal: ${STRIPE_URL_RETORNO_PORTAL:http://localhost:5173/perfil/assinatura}
+  # Rotas /api/v1/admin/** (D-107): e-mails, separados por vírgula, que viram ADMIN ao usá-las
+  admin:
+    emails: ${SAUF_ADMIN_EMAILS:}
 
 springdoc:
   api-docs:

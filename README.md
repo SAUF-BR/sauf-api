@@ -67,6 +67,20 @@ Login e cadastro próprios (D-84 a D-87): a sessão é um JWT num cookie `HttpOn
 - Há "esqueci minha senha" (D-90) e troca de senha no perfil (D-91). O e-mail da conta não
   pode ser trocado (D-82). A verificação do e-mail no cadastro ficou para depois (D-89).
 
+## Administração
+
+As rotas `/api/v1/admin/**` (hoje só as do calendário, D-106) aceitam a `X-Api-Key` (é assim
+que o scraper envia) ou a sessão de uma conta **ADMIN** (D-107). Para virar admin no seu
+ambiente, ponha o seu e-mail no **seu** `.env` (nunca no repositório) e use uma rota de admin
+logado com essa conta:
+
+```
+SAUF_ADMIN_EMAILS=seu-email@exemplo.com
+```
+
+Vários e-mails: separados por vírgula. Tirar o e-mail da lista não rebaixa a conta (troque o
+`usuario.papel` no banco). Sem chave nem sessão: **401**; logado sem ser admin: **403**.
+
 ## E-mails ("esqueci minha senha")
 
 O "esqueci minha senha" manda um **código de 6 dígitos** por e-mail; com o código certo a pessoa
@@ -147,6 +161,7 @@ uv run sauf-scraper censo        # 1º: instituições (com endereço da sede) e
 uv run sauf-scraper --ies uem    # 2º: dados do site da UEM
 uv run sauf-scraper igc --arquivo fontes/IGC_2023.xlsx   # 3º: nota MEC (IGC)
 uv run sauf-scraper sisu --arquivo fontes/portal-sisu-sisu-2025-inscricoes-e-notas-de-corte.xlsx  # 4º: cortes
+uv run sauf-scraper calendario   # datas do calendário (dados/calendario.toml)
 ```
 
 Pré-requisitos, como conferir e erros comuns: seção "Como popular a API" do README do `sauf-scraper`.
@@ -260,5 +275,7 @@ src/main/java/br/com/sauf_api/
 ├── auth/         # login, cadastro, confirmação de e-mail, senha e segurança (D-84 a D-91)
 ├── email/        # envio de e-mails por SMTP e textos dos e-mails (D-88)
 ├── documento/    # Termos de Uso e Política de Privacidade versionados e aceites (D-93)
+├── calendario/   # calendário de vestibulares e próximos prazos (D-104 a D-106)
+├── admin/        # acesso às rotas /api/v1/admin/** (D-107)
 └── ingestao/     # POST /api/v1/ingestao/censo e /lotes (usados pelo sauf-scraper)
 ```
