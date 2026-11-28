@@ -36,6 +36,24 @@ public class Assinatura {
     @Column(name = "criada_em", nullable = false)
     private Instant criadaEm;
 
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+
+    @Column(name = "stripe_subscription_id", unique = true)
+    private String stripeSubscriptionId;
+
+    @Column(name = "cancelar_no_fim_periodo", nullable = false)
+    private boolean cancelarNoFimPeriodo;
+
+    @Column(name = "aceite_termo_maior_idade")
+    private Boolean aceiteTermoMaiorIdade;
+
+    @Column(name = "aceite_versao_termo", length = 20)
+    private String aceiteVersaoTermo;
+
+    @Column(name = "aceite_em")
+    private Instant aceiteEm;
+
     protected Assinatura() {}
 
     public Assinatura(UUID usuarioId, Plano plano, LocalDate renovaEm) {
@@ -48,15 +66,45 @@ public class Assinatura {
 
     // D-57: sem pagamento confirmado, o acesso vai até o dia do renovaEm, inclusive.
     public boolean vigente(LocalDate hoje) {
-        return !hoje.isAfter(renovaEm);
+        return status != StatusAssinatura.CANCELADA
+                && status != StatusAssinatura.INCOMPLETA
+                && !hoje.isAfter(renovaEm);
     }
 
-    public void trocarPlano(Plano novo) {
-        if (novo == plano && status == StatusAssinatura.ATIVA) {
-            throw new AcaoNaoPermitidaException("Você já está no plano " + plano.getNome());
-        }
-        this.plano = novo;
-        this.status = StatusAssinatura.ATIVA;
+    // D-79: regras de status da ADR-BE-016. Durante as retries (PAST_DUE) o acesso continua até o renovaEm.
+    public boolean cobre(RecursoPlano recurso, LocalDate hoje) {
+        return plano.getRecursos().contains(recurso) && statusLiberaAcesso(hoje);
+    }
+
+    private boolean statusLiberaAcesso(LocalDate hoje) {
+        return switch (status) {
+            case ATIVA -> true;
+            case PAST_DUE, CANCELAMENTO_AGENDADO -> !hoje.isAfter(renovaEm);
+            case INCOMPLETA, CANCELADA -> false;
+        };
+    }
+
+    public boolean abertaNoStripe() {
+        return stripeSubscriptionId != null && status != StatusAssinatura.CANCELADA;
+    }
+
+    public void vincularAoStripe(String stripeSubscriptionId) {
+        this.stripeSubscriptionId = stripeSubscriptionId;
+    }
+
+    public void sincronizarComStripe(
+            Plano plano, StatusAssinatura status, LocalDate renovaEm, boolean cancelarNoFimPeriodo, String stripeCustomerId) {
+        this.plano = plano;
+        this.status = status;
+        this.renovaEm = renovaEm;
+        this.cancelarNoFimPeriodo = cancelarNoFimPeriodo;
+        this.stripeCustomerId = stripeCustomerId;
+    }
+
+    public void registrarAceite(boolean aceite, String versaoTermo, Instant aceiteEm) {
+        this.aceiteTermoMaiorIdade = aceite;
+        this.aceiteVersaoTermo = versaoTermo;
+        this.aceiteEm = aceiteEm;
     }
 
     public void cancelar() {
@@ -95,5 +143,29 @@ public class Assinatura {
 
     public Instant getCriadaEm() {
         return criadaEm;
+    }
+
+    public String getStripeCustomerId() {
+        return stripeCustomerId;
+    }
+
+    public String getStripeSubscriptionId() {
+        return stripeSubscriptionId;
+    }
+
+    public boolean isCancelarNoFimPeriodo() {
+        return cancelarNoFimPeriodo;
+    }
+
+    public Boolean getAceiteTermoMaiorIdade() {
+        return aceiteTermoMaiorIdade;
+    }
+
+    public String getAceiteVersaoTermo() {
+        return aceiteVersaoTermo;
+    }
+
+    public Instant getAceiteEm() {
+        return aceiteEm;
     }
 }
