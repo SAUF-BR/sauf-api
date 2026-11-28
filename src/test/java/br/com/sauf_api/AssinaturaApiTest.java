@@ -13,9 +13,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.sauf_api.assinatura.Assinatura;
 import br.com.sauf_api.assinatura.AssinaturaRepository;
 import br.com.sauf_api.assinatura.Plano;
+import br.com.sauf_api.auth.TokenService;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import br.com.sauf_api.auth.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,40 +82,45 @@ class AssinaturaApiTest {
     }
 
     @Test
-    void assinarCriaAssinaturaAtivaPorUmMes() throws Exception {
+    void putNaoAtivaAssinaturaSemPagamento() throws Exception {
         assinar("plus")
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.plano").value("plus"))
-                .andExpect(jsonPath("$.status").value("ativa"))
-                .andExpect(jsonPath("$.renovaEm").value(hoje().plusMonths(1).toString()));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Para assinar, use o checkout"));
 
         mvc.perform(get("/api/v1/assinatura"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.plano").value("plus"));
+                .andExpect(status().isNoContent());
     }
 
     @Test
-    void trocarDePlanoMantemADataDeRenovacao() throws Exception {
-        assinaturas.save(new Assinatura(Sessao.USUARIO_TESTE, Plano.BASIC, hoje().plusDays(10)));
+    void putNaoMudaAssinaturaExistente() throws Exception {
+        assinaturaAtiva();
 
         assinar("plus")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Para assinar, use o checkout"));
+
+        mvc.perform(get("/api/v1/assinatura"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.plano").value("plus"))
+                .andExpect(jsonPath("$.plano").value("basic"))
+                .andExpect(jsonPath("$.status").value("ativa"))
                 .andExpect(jsonPath("$.renovaEm").value(hoje().plusDays(10).toString()));
     }
 
     @Test
-    void escolherOPlanoAtualResponde409() throws Exception {
-        assinar("plus");
+    void putComAssinaturaNoStripeIndicaOPortalENaoMudaOPlano() throws Exception {
+        assinaturaAtiva().vincularAoStripe("sub_1");
 
         assinar("plus")
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Você já está no plano Plus"));
+                .andExpect(jsonPath("$.message").value("Para trocar de plano, use o portal da assinatura"));
+
+        mvc.perform(get("/api/v1/assinatura"))
+                .andExpect(jsonPath("$.plano").value("basic"));
     }
 
     @Test
     void cancelarEReativar() throws Exception {
-        assinar("basic");
+        assinaturaAtiva();
 
         mvc.perform(post("/api/v1/assinatura/cancelar"))
                 .andExpect(status().isOk())
@@ -128,7 +133,7 @@ class AssinaturaApiTest {
 
     @Test
     void cancelarDuasVezesResponde409() throws Exception {
-        assinar("basic");
+        assinaturaAtiva();
         mvc.perform(post("/api/v1/assinatura/cancelar"));
 
         mvc.perform(post("/api/v1/assinatura/cancelar"))
@@ -154,6 +159,10 @@ class AssinaturaApiTest {
     void planoInexistenteResponde400() throws Exception {
         assinar("ouro")
                 .andExpect(status().isBadRequest());
+    }
+
+    private Assinatura assinaturaAtiva() {
+        return assinaturas.save(new Assinatura(Sessao.USUARIO_TESTE, Plano.BASIC, hoje().plusDays(10)));
     }
 
     private ResultActions assinar(String plano) throws Exception {

@@ -12,3 +12,5 @@ sauf:
   auth:
     # Só para os testes (32 bytes em base64)
     jwt-secret: c2VncmVkby1kb3MtdGVzdGVzLWRhLXNhdWYtYXBpLTMyYg==
+  stripe:
+    secret-key: ""

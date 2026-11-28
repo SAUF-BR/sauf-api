@@ -6,6 +6,9 @@ import br.com.sauf_api.auth.EmailEmUsoException;
 import br.com.sauf_api.documento.DocumentoDesatualizadoException;
 import br.com.sauf_api.ingestao.AreaNaoCadastradaException;
 import br.com.sauf_api.ingestao.InstituicaoNaoCadastradaException;
+import br.com.sauf_api.pagamento.FalhaNoGatewayException;
+import br.com.sauf_api.pagamento.PagamentoIndisponivelException;
+import br.com.sauf_api.pagamento.WebhookInvalidoException;
 import br.com.sauf_api.usuario.FotoInvalidaException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -49,6 +52,21 @@ public class TratadorDeErros {
     @ExceptionHandler(DadosInvalidosException.class)
     ResponseEntity<ErroResposta> dadosInvalidos(DadosInvalidosException e) {
         return responder(HttpStatus.BAD_REQUEST, e.getMessage(), e.campos());
+    }
+
+    @ExceptionHandler(PagamentoIndisponivelException.class)
+    ResponseEntity<ErroResposta> pagamentoIndisponivel(PagamentoIndisponivelException e) {
+        return responder(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(FalhaNoGatewayException.class)
+    ResponseEntity<ErroResposta> falhaNoGateway(FalhaNoGatewayException e) {
+        return responder(HttpStatus.BAD_GATEWAY, e.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(WebhookInvalidoException.class)
+    ResponseEntity<ErroResposta> webhookInvalido(WebhookInvalidoException e) {
+        return responder(HttpStatus.BAD_REQUEST, e.getMessage(), Map.of());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AssinaturaRepository extends JpaRepository<Assinatura, UUID> {
 
     Optional<Assinatura> findFirstByUsuarioIdOrderByCriadaEmDesc(UUID usuarioId);
+
+    Optional<Assinatura> findByStripeSubscriptionId(String stripeSubscriptionId);
 }

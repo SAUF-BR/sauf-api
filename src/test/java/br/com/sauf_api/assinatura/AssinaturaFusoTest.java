@@ -1,6 +1,5 @@
 package br.com.sauf_api.assinatura;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
@@ -44,27 +43,5 @@ class AssinaturaFusoTest {
         Optional<AssinaturaResposta> atual = servico("2026-11-17T03:00:00Z", a).atual(USUARIO);
 
         assertTrue(atual.isEmpty());
-    }
-
-    @Test
-    void aTarde22hDeBrasiliaJaEraODiaSeguinteEmUtc() {
-        // 01:00 UTC de 17/11 = 22:00 de 16/11 em Brasília: assinar vence em 16/12 (e não 17/12)
-        AssinaturaResposta nova = servicoParaAssinar("2026-11-17T01:00:00Z");
-
-        assertEquals(LocalDate.parse("2026-12-16"), nova.renovaEm());
-    }
-
-    private AssinaturaResposta servicoParaAssinar(String instanteUtc) {
-        AssinaturaRepository repositorio = (AssinaturaRepository) java.lang.reflect.Proxy.newProxyInstance(
-                getClass().getClassLoader(),
-                new Class<?>[] {AssinaturaRepository.class},
-                (proxy, metodo, args) -> switch (metodo.getName()) {
-                    case "findFirstByUsuarioIdOrderByCriadaEmDesc" -> Optional.empty();
-                    case "save" -> args[0];
-                    default -> null;
-                });
-        AssinaturaService servico =
-                new AssinaturaService(repositorio, Clock.fixed(Instant.parse(instanteUtc), ZoneOffset.UTC));
-        return servico.trocarPlano(USUARIO, Plano.BASIC);
     }
 }
